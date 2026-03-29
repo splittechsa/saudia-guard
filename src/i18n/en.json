@@ -1,0 +1,67 @@
+{
+  "brand": "Eye of Intelligence",
+  "brand_sub": "SOVEREIGN AI",
+  "nav": {
+    "signin": "Sign In",
+    "getStarted": "Get Started",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "sla": "SLA"
+  },
+  "hero": {
+    "badge": "Smart Tech Solutions for Saudi Enterprises",
+    "title1": "AI-Powered",
+    "title2": "Operational Auditing",
+    "desc": "Automated camera-based operational behavior analysis with real-time reports. PDPL compliant. Saudi data residency.",
+    "cta": "Start Free Trial",
+    "demo": "View Demo"
+  },
+  "trust": {
+    "title": "Our Technology & Compliance Partners"
+  },
+  "verticals": {
+    "title": "Supported Business Verticals",
+    "subtitle": "Smart solutions designed for every sector",
+    "retail": {
+      "title": "Retail",
+      "desc": "Inventory alerts, shelf monitoring, and customer movement analysis"
+    },
+    "fnb": {
+      "title": "F&B / Restaurants",
+      "desc": "Hygiene compliance and table turnover analytics"
+    },
+    "logistics": {
+      "title": "Logistics & Warehousing",
+      "desc": "Staff movement tracking and safety protocol monitoring"
+    },
+    "laundry": {
+      "title": "Laundry / Services",
+      "desc": "Order processing and quality control monitoring"
+    }
+  },
+  "privacy_shield": {
+    "title": "The Zero-Sight Protocol",
+    "subtitle": "No human eyes — ever",
+    "no_eyes": {
+      "title": "No Human Eyes",
+      "desc": "Our system is 100% autonomous. No human, including our staff, can view your live or recorded feeds."
+    },
+    "volatile": {
+      "title": "Volatile Processing",
+      "desc": "Images are processed in temporary RAM and purged instantly. We store only text insights, never pixels."
+    },
+    "residency": {
+      "title": "Saudi Data Residency",
+      "desc": "All analytics logs are stored in encrypted Saudi-based servers, fully compliant with NDMO and PDPL."
+    }
+  },
+  "footer": {
+    "tagline": "Eye of Intelligence · Split-Core AI Engine · Saudi Data Residency · PDPL Compliant",
+    "rights": "All rights reserved"
+  },
+  "legal": {
+    "tos_title": "Terms of Service",
+    "privacy_title": "Privacy Policy",
+    "sla_title": "Service Level Agreement"
+  }
+}
