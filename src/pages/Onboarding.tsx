@@ -1,15 +1,20 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Check, ArrowRight, ArrowLeft, Cpu, Monitor, Plus, X } from "lucide-react";
+import { Shield, Check, ArrowRight, ArrowLeft, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const tiers = [
-  { name: "Basic", price: "299", features: ["1 Store", "4 Audits/Day", "Basic Analytics", "Email Support"], popular: false },
-  { name: "Pro", price: "499", features: ["3 Stores", "12 Audits/Day", "Advanced Analytics", "Priority Support", "Custom Queries"], popular: true },
-  { name: "Enterprise", price: "899", features: ["Unlimited Stores", "Unlimited Audits", "AI Insights", "Dedicated Manager", "Custom Queries", "API Access"], popular: false },
+  { name: "Basic", price: 299, features: ["1 Store", "4 Audits/Day", "Basic Analytics", "Email Support"], popular: false },
+  { name: "Pro", price: 499, features: ["3 Stores", "12 Audits/Day", "Advanced Analytics", "Priority Support", "Custom Queries"], popular: true },
+  { name: "Enterprise", price: 899, features: ["Unlimited Stores", "Unlimited Audits", "AI Insights", "Dedicated Manager", "Custom Queries", "API Access"], popular: false },
 ];
+
+const tierKeys = ["basic", "pro", "enterprise"] as const;
 
 const defaultQuestions = [
   "Are the tables clean and sanitized?",
@@ -24,17 +29,63 @@ export default function Onboarding() {
   const [selectedTier, setSelectedTier] = useState(1);
   const [questions, setQuestions] = useState<string[]>(defaultQuestions.slice(0, 3));
   const [newQuestion, setNewQuestion] = useState("");
-  const [hardwareChoice, setHardwareChoice] = useState<"software" | "hardware">("software");
+  const [storeName, setStoreName] = useState("");
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  const steps = ["Plan", "Questions", "Hardware", "Credentials"];
+  const steps = ["Plan", "Questions", "Store"];
+
+  const handleActivate = async () => {
+    if (!user) {
+      toast.error("Please sign in first");
+      navigate("/login");
+      return;
+    }
+    if (!storeName.trim()) {
+      toast.error("Please enter a store name");
+      return;
+    }
+
+    setSaving(true);
+
+    // Create subscription
+    const { error: subError } = await supabase.from("subscriptions").insert({
+      user_id: user.id,
+      tier: tierKeys[selectedTier],
+      price_sar: tiers[selectedTier].price,
+      status: "active",
+    });
+
+    if (subError) {
+      toast.error("Failed to create subscription: " + subError.message);
+      setSaving(false);
+      return;
+    }
+
+    // Create store
+    const { error: storeError } = await supabase.from("stores").insert({
+      user_id: user.id,
+      name: storeName.trim(),
+      custom_queries: questions,
+    });
+
+    if (storeError) {
+      toast.error("Failed to create store: " + storeError.message);
+      setSaving(false);
+      return;
+    }
+
+    toast.success("Subscription activated! Set up your hardware next.");
+    setSaving(false);
+    navigate("/dashboard");
+  };
 
   return (
     <div className="min-h-screen bg-background carbon-grid relative overflow-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-primary/5 rounded-full blur-[150px] pointer-events-none" />
 
       <div className="max-w-4xl mx-auto px-4 py-12">
-        {/* Header */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 mb-4">
             <Shield className="w-6 h-6 text-primary" />
@@ -67,15 +118,11 @@ export default function Onboarding() {
                   key={tier.name}
                   onClick={() => setSelectedTier(i)}
                   className={`relative rounded-xl p-6 text-left transition-all border ${
-                    selectedTier === i
-                      ? "bg-card border-primary glow-blue"
-                      : "bg-card border-border hover:border-muted-foreground"
+                    selectedTier === i ? "bg-card border-primary glow-blue" : "bg-card border-border hover:border-muted-foreground"
                   }`}
                 >
                   {tier.popular && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-widest text-accent bg-accent/10 px-3 py-1 rounded-full border border-accent/20">
-                      Popular
-                    </span>
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-widest text-accent bg-accent/10 px-3 py-1 rounded-full border border-accent/20">Popular</span>
                   )}
                   <h3 className="text-lg font-bold text-foreground">{tier.name}</h3>
                   <div className="mt-2 flex items-baseline gap-1">
@@ -124,11 +171,7 @@ export default function Onboarding() {
                       }
                     }}
                   />
-                  <Button
-                    size="sm"
-                    onClick={() => { if (newQuestion.trim()) { setQuestions([...questions, newQuestion.trim()]); setNewQuestion(""); }}}
-                    className="bg-primary text-primary-foreground"
-                  >
+                  <Button size="sm" onClick={() => { if (newQuestion.trim()) { setQuestions([...questions, newQuestion.trim()]); setNewQuestion(""); }}} className="bg-primary text-primary-foreground">
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>
@@ -136,50 +179,15 @@ export default function Onboarding() {
             </motion.div>
           )}
 
-          {/* Step 2: Hardware Choice */}
+          {/* Step 2: Store Name */}
           {step === 2 && (
-            <motion.div key="hardware" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="max-w-xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                { key: "software" as const, icon: Monitor, title: "Software Only", desc: "Install on your existing PC", price: "Included" },
-                { key: "hardware" as const, icon: Cpu, title: "Split-Pi Hardware", desc: "Dedicated Raspberry Pi device", price: "+600 SAR" },
-              ].map((opt) => (
-                <button
-                  key={opt.key}
-                  onClick={() => setHardwareChoice(opt.key)}
-                  className={`rounded-xl p-6 text-left border transition-all ${
-                    hardwareChoice === opt.key ? "bg-card border-primary glow-blue" : "bg-card border-border hover:border-muted-foreground"
-                  }`}
-                >
-                  <opt.icon className={`w-8 h-8 mb-3 ${hardwareChoice === opt.key ? "text-primary" : "text-muted-foreground"}`} />
-                  <h3 className="text-sm font-bold text-foreground">{opt.title}</h3>
-                  <p className="text-xs text-muted-foreground mt-1">{opt.desc}</p>
-                  <p className="text-sm font-bold text-accent mt-3">{opt.price}</p>
-                </button>
-              ))}
-            </motion.div>
-          )}
-
-          {/* Step 3: Credentials */}
-          {step === 3 && (
-            <motion.div key="credentials" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="max-w-xl mx-auto">
+            <motion.div key="store" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="max-w-xl mx-auto">
               <div className="rounded-xl bg-card border border-border p-6">
-                <h3 className="text-sm font-semibold text-foreground mb-1">Camera Credentials</h3>
-                <p className="text-xs text-muted-foreground mb-4">Enter your RTSP/IP camera details. These are stored with enterprise-grade encryption.</p>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">RTSP URL</label>
-                    <Input placeholder="rtsp://192.168.1.100:554/stream1" className="bg-secondary border-border text-foreground font-mono text-sm placeholder:text-muted-foreground" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">Username</label>
-                      <Input placeholder="admin" className="bg-secondary border-border text-foreground text-sm placeholder:text-muted-foreground" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">Password</label>
-                      <Input type="password" placeholder="••••••••" className="bg-secondary border-border text-foreground text-sm placeholder:text-muted-foreground" />
-                    </div>
-                  </div>
+                <h3 className="text-sm font-semibold text-foreground mb-1">Your Store</h3>
+                <p className="text-xs text-muted-foreground mb-4">Enter your store name. You'll configure hardware & camera in the dashboard.</p>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">Store Name</label>
+                  <Input value={storeName} onChange={(e) => setStoreName(e.target.value)} placeholder="Split Cuts - Riyadh" className="bg-secondary border-border text-foreground text-sm placeholder:text-muted-foreground" />
                 </div>
               </div>
             </motion.div>
@@ -188,18 +196,15 @@ export default function Onboarding() {
 
         {/* Navigation */}
         <div className="flex justify-between mt-8 max-w-xl mx-auto">
-          <Button
-            variant="outline"
-            onClick={() => step > 0 ? setStep(step - 1) : navigate("/")}
-            className="border-border text-foreground hover:bg-secondary"
-          >
+          <Button variant="outline" onClick={() => step > 0 ? setStep(step - 1) : navigate("/")} className="border-border text-foreground hover:bg-secondary">
             <ArrowLeft className="w-4 h-4 mr-2" /> Back
           </Button>
           <Button
-            onClick={() => step < 3 ? setStep(step + 1) : navigate("/dashboard")}
+            onClick={() => step < 2 ? setStep(step + 1) : handleActivate()}
+            disabled={saving}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            {step === 3 ? "Activate" : "Continue"} <ArrowRight className="w-4 h-4 ml-2" />
+            {step === 2 ? (saving ? "Activating..." : "Activate") : "Continue"} <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         </div>
       </div>
