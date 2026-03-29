@@ -14,16 +14,217 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analytics_logs: {
+        Row: {
+          created_at: string
+          id: string
+          result: Json | null
+          score: number | null
+          status: string | null
+          store_id: string
+          summary: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          result?: Json | null
+          score?: number | null
+          status?: string | null
+          store_id: string
+          summary?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          result?: Json | null
+          score?: number | null
+          status?: string | null
+          store_id?: string
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_logs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      security_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          id: string
+          message: string
+          resolved: boolean | null
+          store_id: string | null
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          id?: string
+          message: string
+          resolved?: boolean | null
+          store_id?: string | null
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          id?: string
+          message?: string
+          resolved?: boolean | null
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_alerts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stores: {
+        Row: {
+          camera_password: string | null
+          camera_username: string | null
+          created_at: string
+          custom_queries: Json | null
+          hardware_choice: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          operating_hours: Json | null
+          rtsp_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          camera_password?: string | null
+          camera_username?: string | null
+          created_at?: string
+          custom_queries?: Json | null
+          hardware_choice?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          operating_hours?: Json | null
+          rtsp_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          camera_password?: string | null
+          camera_username?: string | null
+          created_at?: string
+          custom_queries?: Json | null
+          hardware_choice?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          operating_hours?: Json | null
+          rtsp_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string
+          hardware_choice: string | null
+          id: string
+          price_sar: number
+          status: string
+          tier: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          hardware_choice?: string | null
+          id?: string
+          price_sar: number
+          status?: string
+          tier: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          hardware_choice?: string | null
+          id?: string
+          price_sar?: number
+          status?: string
+          tier?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "super_owner" | "it_support" | "customer_support" | "merchant"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +351,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["super_owner", "it_support", "customer_support", "merchant"],
+    },
   },
 } as const
