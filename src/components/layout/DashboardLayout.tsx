@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Store, BarChart3, Shield, Settings, LogOut,
   Bell, ChevronLeft, ChevronRight, Zap, Users, HelpCircle, Activity
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", path: "/dashboard" },
@@ -25,16 +26,22 @@ const adminItems = [
 export default function DashboardLayout({ children, isAdmin = false }: { children: React.ReactNode; isAdmin?: boolean }) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut, profile } = useAuth();
   const items = isAdmin ? adminItems : navItems;
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
+
+  const initials = profile?.full_name
+    ? profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+    : "SA";
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Sidebar */}
-      <motion.aside
-        animate={{ width: collapsed ? 72 : 260 }}
-        className="fixed left-0 top-0 h-full z-50 glass-strong flex flex-col"
-      >
-        {/* Logo */}
+      <motion.aside animate={{ width: collapsed ? 72 : 260 }} className="fixed left-0 top-0 h-full z-50 glass-strong flex flex-col">
         <div className="flex items-center gap-3 p-5 border-b border-border">
           <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center shrink-0">
             <Shield className="w-5 h-5 text-primary-foreground" />
@@ -49,26 +56,15 @@ export default function DashboardLayout({ children, isAdmin = false }: { childre
           </AnimatePresence>
         </div>
 
-        {/* Nav Items */}
         <nav className="flex-1 p-3 space-y-1">
           {items.map((item) => {
             const active = location.pathname === item.path;
             return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group ${
-                  active
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                }`}
-              >
+              <Link key={item.path} to={item.path} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group ${active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
                 <item.icon className={`w-5 h-5 shrink-0 ${active ? "text-primary" : ""}`} />
                 <AnimatePresence>
                   {!collapsed && (
-                    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-sm font-medium">
-                      {item.label}
-                    </motion.span>
+                    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-sm font-medium">{item.label}</motion.span>
                   )}
                 </AnimatePresence>
                 {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary animate-pulse-glow" />}
@@ -77,30 +73,24 @@ export default function DashboardLayout({ children, isAdmin = false }: { childre
           })}
         </nav>
 
-        {/* Collapse Toggle */}
-        <div className="p-3 border-t border-border">
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary w-full transition-all"
-          >
+        <div className="p-3 border-t border-border space-y-1">
+          <button onClick={handleSignOut} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-secondary w-full transition-all">
+            <LogOut className="w-5 h-5" />
+            {!collapsed && <span className="text-sm">Sign Out</span>}
+          </button>
+          <button onClick={() => setCollapsed(!collapsed)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary w-full transition-all">
             {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
             {!collapsed && <span className="text-sm">Collapse</span>}
           </button>
         </div>
       </motion.aside>
 
-      {/* Main Content */}
       <div className={`flex-1 transition-all ${collapsed ? "ml-[72px]" : "ml-[260px]"}`}>
-        {/* Top Bar */}
         <header className="sticky top-0 z-40 glass-strong border-b border-border">
           <div className="flex items-center justify-between px-6 py-3">
             <div>
-              <h2 className="text-lg font-semibold text-foreground">
-                {isAdmin ? "Admin Console" : "Merchant Dashboard"}
-              </h2>
-              <p className="text-xs text-muted-foreground font-mono">
-                {new Date().toLocaleDateString("en-SA", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-              </p>
+              <h2 className="text-lg font-semibold text-foreground">{isAdmin ? "Admin Console" : "Merchant Dashboard"}</h2>
+              <p className="text-xs text-muted-foreground font-mono">{new Date().toLocaleDateString("en-SA", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
             </div>
             <div className="flex items-center gap-3">
               <button className="relative p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
@@ -108,16 +98,13 @@ export default function DashboardLayout({ children, isAdmin = false }: { childre
                 <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-destructive" />
               </button>
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-emerald flex items-center justify-center text-xs font-bold text-primary-foreground">
-                SA
+                {initials}
               </div>
             </div>
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="p-6 carbon-grid min-h-[calc(100vh-57px)]">
-          {children}
-        </main>
+        <main className="p-6 carbon-grid min-h-[calc(100vh-57px)]">{children}</main>
       </div>
     </div>
   );
