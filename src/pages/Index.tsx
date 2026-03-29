@@ -2,8 +2,8 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import {
-  Shield, ArrowRight, ArrowLeft, Zap, Eye, EyeOff, Server, Lock,
-  ShoppingCart, UtensilsCrossed, Truck, Shirt, ChevronRight
+  Shield, ArrowLeft, Zap, Eye, EyeOff, Server, Lock,
+  ShoppingCart, UtensilsCrossed, Truck, Shirt, Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -17,7 +17,7 @@ export default function Index() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === "ar";
-  const Arrow = isRtl ? ArrowLeft : ArrowRight;
+  const Arrow = ArrowLeft;
 
   const verticals = [
     { key: "retail", icon: ShoppingCart, color: "text-primary" },
@@ -33,7 +33,7 @@ export default function Index() {
   ];
 
   return (
-    <div dir={isRtl ? "rtl" : "ltr"} className="min-h-screen bg-background overflow-hidden relative">
+    <div dir="rtl" className="min-h-screen bg-background overflow-hidden relative">
       {/* Ambient */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/5 rounded-full blur-[200px] pointer-events-none" />
 
@@ -51,10 +51,10 @@ export default function Index() {
           </div>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
-            <Button variant="ghost" onClick={() => navigate("/login")} className="text-muted-foreground hover:text-foreground text-sm">
+            <Button variant="ghost" onClick={() => navigate("/login")} className="text-muted-foreground hover:text-foreground text-sm font-arabic">
               {t("nav.signin")}
             </Button>
-            <Button onClick={() => navigate("/onboarding")} className="bg-primary text-primary-foreground text-sm h-9">
+            <Button onClick={() => navigate("/onboarding")} className="bg-primary text-primary-foreground text-sm h-9 font-arabic">
               {t("nav.getStarted")}
             </Button>
           </div>
@@ -66,7 +66,7 @@ export default function Index() {
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 mb-6">
             <Eye className="w-3.5 h-3.5 text-accent" />
-            <span className="text-xs font-semibold text-accent uppercase tracking-widest font-arabic">
+            <span className="text-xs font-semibold text-accent tracking-widest font-arabic">
               {t("hero.badge")}
             </span>
           </div>
@@ -88,11 +88,24 @@ export default function Index() {
         </motion.div>
       </section>
 
+      {/* Zero-Sight Badge */}
+      <section className="max-w-6xl mx-auto px-6 pb-8">
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} className="flex justify-center">
+          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-emerald/10 border-2 border-emerald/30 glow-emerald">
+            <EyeOff className="w-6 h-6 text-emerald" />
+            <div className="text-center">
+              <p className="text-sm font-bold text-emerald font-arabic">لا تقع عليها عين بشرية</p>
+              <p className="text-[10px] text-emerald/70 font-arabic">نظام مؤتمت بالكامل — صفر رؤية بشرية</p>
+            </div>
+            <EyeOff className="w-6 h-6 text-emerald" />
+          </div>
+        </motion.div>
+      </section>
+
       {/* Trust Bar Marquee */}
       <section className="border-y border-border py-4 overflow-hidden relative">
-        <div className="absolute inset-y-0 start-0 w-20 bg-gradient-to-e from-background to-transparent z-10 pointer-events-none" />
-        <div className="absolute inset-y-0 end-0 w-20 bg-gradient-to-s from-transparent to-background z-10 pointer-events-none" style={{ backgroundImage: isRtl ? 'linear-gradient(to left, transparent, hsl(var(--background)))' : 'linear-gradient(to right, transparent, hsl(var(--background)))' }} />
-        <div className="absolute inset-y-0 start-0 w-20 z-10 pointer-events-none" style={{ backgroundImage: isRtl ? 'linear-gradient(to right, transparent, hsl(var(--background)))' : 'linear-gradient(to left, transparent, hsl(var(--background)))' }} />
+        <div className="absolute inset-y-0 start-0 w-20 z-10 pointer-events-none" style={{ backgroundImage: 'linear-gradient(to right, transparent, hsl(var(--background)))' }} />
+        <div className="absolute inset-y-0 end-0 w-20 z-10 pointer-events-none" style={{ backgroundImage: 'linear-gradient(to left, transparent, hsl(var(--background)))' }} />
         <div className="flex animate-marquee gap-12 whitespace-nowrap">
           {[...trustPartners, ...trustPartners].map((p, i) => (
             <span key={i} className="text-xs font-mono text-muted-foreground/60 uppercase tracking-widest flex-shrink-0">
@@ -134,7 +147,7 @@ export default function Index() {
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald/10 border border-emerald/20 mb-4">
               <Lock className="w-3.5 h-3.5 text-emerald" />
-              <span className="text-xs font-semibold text-emerald uppercase tracking-widest">Zero-Sight Protocol</span>
+              <span className="text-xs font-semibold text-emerald tracking-widest font-arabic">{t("privacy_shield.badge")}</span>
             </div>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground font-arabic">{t("privacy_shield.title")}</h2>
             <p className="text-muted-foreground mt-3 font-arabic">{t("privacy_shield.subtitle")}</p>
@@ -176,12 +189,27 @@ export default function Index() {
               <button onClick={() => navigate("/sla")} className="hover:text-foreground transition-colors font-arabic">{t("nav.sla")}</button>
             </div>
           </div>
-          <div className="mt-6 pt-6 border-t border-border text-center">
+
+          {/* Contact & CR */}
+          <div className="mt-6 pt-6 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-primary" />
+                <a href="mailto:splittechsa@outlook.com" className="hover:text-foreground transition-colors font-mono">splittechsa@outlook.com</a>
+              </div>
+            </div>
+            <div className="text-xs text-muted-foreground font-arabic">
+              <span className="text-muted-foreground/60">{t("footer.cr")}:</span>{" "}
+              <span className="text-muted-foreground/40 font-mono">{t("footer.cr_number")}</span>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-border text-center">
             <p className="text-xs text-muted-foreground font-mono">
               🔒 {t("footer.tagline")}
             </p>
             <p className="text-[10px] text-muted-foreground/50 mt-2 font-arabic">
-              © {new Date().getFullYear()} Sovereign AI · {t("footer.rights")}
+              © {new Date().getFullYear()} Split Intelligence · {t("footer.rights")}
             </p>
           </div>
         </div>
