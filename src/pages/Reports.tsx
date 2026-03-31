@@ -39,17 +39,20 @@ export default function Reports() {
   const [selectedStore, setSelectedStore] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
       setLoading(true);
-      const [storesRes, auditsRes] = await Promise.all([
+      const [storesRes, auditsRes, subsRes] = await Promise.all([
         supabase.from("stores").select("id, name").eq("user_id", user.id),
         supabase.from("analytics_logs").select("*").order("created_at", { ascending: false }).limit(500),
+        supabase.from("subscriptions").select("id, status").eq("user_id", user.id).eq("status", "active").limit(1),
       ]);
       if (storesRes.data) setStores(storesRes.data);
       if (auditsRes.data) setAudits(auditsRes.data as AuditLog[]);
+      setHasActiveSubscription((subsRes.data?.length ?? 0) > 0);
       setLoading(false);
     };
     fetchData();
