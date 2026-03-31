@@ -223,7 +223,11 @@ export default function ITDashboard() {
   };
 
   const newRequests = storeHealths.filter((s) => s.store_status === "pending_review" || s.store_status === "draft");
-  const activeStores = storeHealths.filter((s) => s.store_status === "active");
+  const activeStores = storeHealths.filter((s) => s.store_status === "active")
+    .sort((a, b) => {
+      const order = { offline: 0, warning: 1, online: 2 };
+      return (order[a.status] ?? 2) - (order[b.status] ?? 2);
+    });
   const onlineCount = activeStores.filter((s) => s.status === "online").length;
   const warningCount = activeStores.filter((s) => s.status === "warning").length;
   const offlineCount = activeStores.filter((s) => s.status === "offline").length;
