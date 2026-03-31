@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, DollarSign, Server, AlertTriangle, Shield, CheckCircle, XCircle, Clock, Eye, MessageSquare, UserPlus, Search } from "lucide-react";
+import { Users, DollarSign, Server, AlertTriangle, Shield, CheckCircle, XCircle, Clock, Eye, MessageSquare, UserPlus, Search, Cpu, Wifi, WifiOff, Key, Copy } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -73,7 +73,8 @@ export default function AdminDashboard() {
   const [liveAudits, setLiveAudits] = useState<LiveAudit[]>([]);
   const [profiles, setProfiles] = useState<Record<string, ProfileRow>>({});
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "surveillance" | "queries" | "approvals" | "alerts" | "tickets">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "surveillance" | "engines" | "queries" | "approvals" | "alerts" | "tickets">("overview");
+  const [apiKeys, setApiKeys] = useState<Record<string, { api_key: string; is_active: boolean }>>({});
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -101,13 +102,14 @@ export default function AdminDashboard() {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [storesRes, alertsRes, ticketsRes, subsRes, pendingSubsRes, auditsRes] = await Promise.all([
+    const [storesRes, alertsRes, ticketsRes, subsRes, pendingSubsRes, auditsRes, apiKeysRes] = await Promise.all([
       supabase.from("stores").select("*").order("created_at", { ascending: false }),
       supabase.from("security_alerts").select("*").order("created_at", { ascending: false }).limit(20),
       supabase.from("support_tickets").select("*").order("created_at", { ascending: false }).limit(20),
       supabase.from("subscriptions").select("*").eq("status", "active"),
       supabase.from("subscriptions").select("*").eq("status", "pending").order("created_at", { ascending: false }),
       supabase.from("analytics_logs").select("id, store_id, score, status, summary, created_at").order("created_at", { ascending: false }).limit(30),
+      supabase.from("store_api_keys").select("store_id, api_key, is_active"),
     ]);
     if (storesRes.data) setStores(storesRes.data as any[]);
     if (alertsRes.data) setAlerts(alertsRes.data as AlertRow[]);
@@ -115,6 +117,11 @@ export default function AdminDashboard() {
     if (subsRes.data) setSubs(subsRes.data as SubRow[]);
     if (pendingSubsRes.data) setPendingSubs(pendingSubsRes.data as SubRow[]);
     if (auditsRes.data) setLiveAudits(auditsRes.data as LiveAudit[]);
+    if (apiKeysRes.data) {
+      const keysMap: Record<string, { api_key: string; is_active: boolean }> = {};
+      (apiKeysRes.data as any[]).forEach((k: any) => { keysMap[k.store_id] = { api_key: k.api_key, is_active: k.is_active }; });
+      setApiKeys(keysMap);
+    }
     setLoading(false);
   };
 
@@ -128,6 +135,40 @@ export default function AdminDashboard() {
   const unresolvedAlerts = alerts.filter((a) => !a.resolved);
   const criticalAlerts = unresolvedAlerts.filter((a) => a.alert_type === "critical" || a.alert_type === "tampering");
   const storeNameMap = Object.fromEntries(stores.map((s) => [s.id, s.name]));
+
+  // Engine heartbeat: determine last audit time per store
+  const storeLastAudit = liveAudits.reduce((acc, a) => {
+    if (!acc[a.store_id] || new Date(a.created_at) > new Date(acc[a.store_id])) {
+      acc[a.store_id] = a.created_at;
+    }
+    return acc;
+  }, {} as Record<string, string>);
+
+  const getEngineStatus = (storeId: string) => {
+    const lastAudit = storeLastAudit[storeId];
+    if (!lastAudit) return "offline";
+    const diffMin = (Date.now() - new Date(lastAudit).getTime()) / 60000;
+    if (diffMin <= 15) return "online";
+    if (diffMin <= 30) return "warning";
+    return "offline";
+  };
+
+  const handleGenerateApiKey = async (storeId: string) => {
+    const { error } = await supabase.from("store_api_keys").insert({ store_id: storeId });
+    if (error && error.code === "23505") {
+      toast.error("المفتاح موجود مسبقاً لهذا المتجر");
+    } else if (error) {
+      toast.error("خطأ في إنشاء المفتاح");
+    } else {
+      toast.success("تم إنشاء API Key بنجاح");
+      fetchAll();
+    }
+  };
+
+  const copyApiKey = (key: string) => {
+    navigator.clipboard.writeText(key);
+    toast.success("تم نسخ المفتاح");
+  };
 
   const handleQueryApproval = async (storeId: string, approved: boolean) => {
     await supabase.from("stores").update({ query_status: approved ? "approved" : "rejected" }).eq("id", storeId);
@@ -160,6 +201,7 @@ export default function AdminDashboard() {
   const tabs = [
     { id: "overview" as const, label: "نظرة عامة", icon: Shield },
     { id: "surveillance" as const, label: "عين الإدارة", icon: Eye },
+    { id: "engines" as const, label: "المحركات", icon: Cpu },
     { id: "approvals" as const, label: `الطلبات (${pendingSubs.length})`, icon: UserPlus },
     { id: "queries" as const, label: "اعتمادات المتاجر", icon: CheckCircle },
     { id: "alerts" as const, label: `التنبيهات (${unresolvedAlerts.length})`, icon: AlertTriangle },
@@ -398,7 +440,93 @@ export default function AdminDashboard() {
           </motion.div>
         )}
 
-        {/* Approvals Tab — طلبات الاشتراك */}
+        {/* Engines Monitoring Tab */}
+        {activeTab === "engines" && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Cpu className="w-5 h-5 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground font-arabic">مراقبة المحركات — Heartbeat & API Keys</h3>
+            </div>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-xl bg-card border border-border p-4 text-center">
+                <Wifi className="w-5 h-5 text-emerald mx-auto mb-1" />
+                <p className="text-lg font-bold text-emerald font-mono">{stores.filter(s => getEngineStatus(s.id) === "online").length}</p>
+                <p className="text-[10px] text-muted-foreground font-arabic">متصل</p>
+              </div>
+              <div className="rounded-xl bg-card border border-border p-4 text-center">
+                <AlertTriangle className="w-5 h-5 text-accent mx-auto mb-1" />
+                <p className="text-lg font-bold text-accent font-mono">{stores.filter(s => getEngineStatus(s.id) === "warning").length}</p>
+                <p className="text-[10px] text-muted-foreground font-arabic">تحذير</p>
+              </div>
+              <div className="rounded-xl bg-card border border-border p-4 text-center">
+                <WifiOff className="w-5 h-5 text-destructive mx-auto mb-1" />
+                <p className="text-lg font-bold text-destructive font-mono">{stores.filter(s => getEngineStatus(s.id) === "offline").length}</p>
+                <p className="text-[10px] text-muted-foreground font-arabic">غير متصل</p>
+              </div>
+            </div>
+
+            {/* Store engines list */}
+            <div className="space-y-2">
+              {stores.map((store) => {
+                const status = getEngineStatus(store.id);
+                const lastAudit = storeLastAudit[store.id];
+                const hasKey = !!apiKeys[store.id];
+                return (
+                  <motion.div key={store.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
+                    className={`rounded-xl bg-card border p-4 ${
+                      status === "online" ? "border-emerald/30" : status === "warning" ? "border-accent/30" : "border-destructive/20"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${
+                          status === "online" ? "bg-emerald animate-pulse" : status === "warning" ? "bg-accent" : "bg-destructive"
+                        }`} />
+                        <div>
+                          <p className="text-sm font-bold text-foreground font-arabic">{store.name}</p>
+                          <p className="text-[10px] text-muted-foreground font-mono">
+                            {lastAudit ? `آخر نبضة: ${new Date(lastAudit).toLocaleString("ar-SA")}` : "لم يتصل بعد"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {hasKey ? (
+                          <div className="flex items-center gap-1">
+                            <code className="text-[10px] text-muted-foreground bg-secondary/50 px-2 py-1 rounded font-mono">
+                              {apiKeys[store.id].api_key.slice(0, 8)}...
+                            </code>
+                            <Button size="sm" variant="ghost" onClick={() => copyApiKey(apiKeys[store.id].api_key)} className="h-7 w-7 p-0">
+                              <Copy className="w-3 h-3 text-muted-foreground" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={() => handleGenerateApiKey(store.id)} className="text-xs font-arabic h-7 gap-1">
+                            <Key className="w-3 h-3" /> إنشاء مفتاح
+                          </Button>
+                        )}
+                        <Badge variant="outline" className={`text-[10px] ${
+                          status === "online" ? "text-emerald border-emerald/30" : status === "warning" ? "text-accent border-accent/30" : "text-destructive border-destructive/30"
+                        }`}>
+                          {status === "online" ? "متصل" : status === "warning" ? "بطيء" : "غير متصل"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+            {stores.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground text-sm font-arabic">
+                <Cpu className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                لا توجد متاجر مسجلة بعد
+              </div>
+            )}
+          </motion.div>
+        )}
+
+
         {activeTab === "approvals" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <div className="flex items-center gap-2 mb-2">
