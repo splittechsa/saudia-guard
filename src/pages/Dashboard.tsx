@@ -236,6 +236,7 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
+      {showWelcome && <WelcomeTutorial onClose={() => setShowWelcome(false)} />}
       <div className="space-y-6">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <h1 className="text-2xl font-bold text-foreground font-arabic">مرحباً، {displayName}</h1>
