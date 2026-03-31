@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          observations: Json | null
           result: Json | null
           score: number | null
           status: string | null
@@ -27,6 +28,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          observations?: Json | null
           result?: Json | null
           score?: number | null
           status?: string | null
@@ -36,6 +38,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          observations?: Json | null
           result?: Json | null
           score?: number | null
           status?: string | null
@@ -114,6 +117,38 @@ export type Database = {
           },
         ]
       }
+      store_api_keys: {
+        Row: {
+          api_key: string
+          created_at: string
+          id: string
+          is_active: boolean
+          store_id: string
+        }
+        Insert: {
+          api_key?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          store_id: string
+        }
+        Update: {
+          api_key?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_api_keys_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           camera_password: string | null
@@ -122,6 +157,7 @@ export type Database = {
           custom_queries: Json | null
           hardware_choice: string | null
           id: string
+          interval_minutes: number | null
           is_active: boolean | null
           name: string
           operating_hours: Json | null
@@ -137,6 +173,7 @@ export type Database = {
           custom_queries?: Json | null
           hardware_choice?: string | null
           id?: string
+          interval_minutes?: number | null
           is_active?: boolean | null
           name: string
           operating_hours?: Json | null
@@ -152,6 +189,7 @@ export type Database = {
           custom_queries?: Json | null
           hardware_choice?: string | null
           id?: string
+          interval_minutes?: number | null
           is_active?: boolean | null
           name?: string
           operating_hours?: Json | null
