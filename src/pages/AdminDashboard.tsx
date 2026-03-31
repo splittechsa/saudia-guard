@@ -19,9 +19,11 @@ interface StoreRow {
   user_id: string;
   hardware_choice: string | null;
   is_active: boolean | null;
+  store_status: string;
   custom_queries: any;
   query_status: string;
   created_at: string;
+  reviewed_at: string | null;
 }
 
 interface AlertRow {
