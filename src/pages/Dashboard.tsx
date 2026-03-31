@@ -8,6 +8,8 @@ import { AuditLogItem } from "@/components/ui/audit-log-item";
 import HardwareSetup from "@/components/dashboard/HardwareSetup";
 import { ComparativeChart } from "@/components/dashboard/ComparativeChart";
 import { WelcomeTutorial } from "@/components/dashboard/WelcomeTutorial";
+import { OperatingHoursScheduler } from "@/components/dashboard/OperatingHoursScheduler";
+import { BroadcastBanner } from "@/components/dashboard/BroadcastBanner";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
