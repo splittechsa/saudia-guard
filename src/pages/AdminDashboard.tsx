@@ -440,7 +440,93 @@ export default function AdminDashboard() {
           </motion.div>
         )}
 
-        {/* Approvals Tab — طلبات الاشتراك */}
+        {/* Engines Monitoring Tab */}
+        {activeTab === "engines" && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Cpu className="w-5 h-5 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground font-arabic">مراقبة المحركات — Heartbeat & API Keys</h3>
+            </div>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-xl bg-card border border-border p-4 text-center">
+                <Wifi className="w-5 h-5 text-emerald mx-auto mb-1" />
+                <p className="text-lg font-bold text-emerald font-mono">{stores.filter(s => getEngineStatus(s.id) === "online").length}</p>
+                <p className="text-[10px] text-muted-foreground font-arabic">متصل</p>
+              </div>
+              <div className="rounded-xl bg-card border border-border p-4 text-center">
+                <AlertTriangle className="w-5 h-5 text-accent mx-auto mb-1" />
+                <p className="text-lg font-bold text-accent font-mono">{stores.filter(s => getEngineStatus(s.id) === "warning").length}</p>
+                <p className="text-[10px] text-muted-foreground font-arabic">تحذير</p>
+              </div>
+              <div className="rounded-xl bg-card border border-border p-4 text-center">
+                <WifiOff className="w-5 h-5 text-destructive mx-auto mb-1" />
+                <p className="text-lg font-bold text-destructive font-mono">{stores.filter(s => getEngineStatus(s.id) === "offline").length}</p>
+                <p className="text-[10px] text-muted-foreground font-arabic">غير متصل</p>
+              </div>
+            </div>
+
+            {/* Store engines list */}
+            <div className="space-y-2">
+              {stores.map((store) => {
+                const status = getEngineStatus(store.id);
+                const lastAudit = storeLastAudit[store.id];
+                const hasKey = !!apiKeys[store.id];
+                return (
+                  <motion.div key={store.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
+                    className={`rounded-xl bg-card border p-4 ${
+                      status === "online" ? "border-emerald/30" : status === "warning" ? "border-accent/30" : "border-destructive/20"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${
+                          status === "online" ? "bg-emerald animate-pulse" : status === "warning" ? "bg-accent" : "bg-destructive"
+                        }`} />
+                        <div>
+                          <p className="text-sm font-bold text-foreground font-arabic">{store.name}</p>
+                          <p className="text-[10px] text-muted-foreground font-mono">
+                            {lastAudit ? `آخر نبضة: ${new Date(lastAudit).toLocaleString("ar-SA")}` : "لم يتصل بعد"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {hasKey ? (
+                          <div className="flex items-center gap-1">
+                            <code className="text-[10px] text-muted-foreground bg-secondary/50 px-2 py-1 rounded font-mono">
+                              {apiKeys[store.id].api_key.slice(0, 8)}...
+                            </code>
+                            <Button size="sm" variant="ghost" onClick={() => copyApiKey(apiKeys[store.id].api_key)} className="h-7 w-7 p-0">
+                              <Copy className="w-3 h-3 text-muted-foreground" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={() => handleGenerateApiKey(store.id)} className="text-xs font-arabic h-7 gap-1">
+                            <Key className="w-3 h-3" /> إنشاء مفتاح
+                          </Button>
+                        )}
+                        <Badge variant="outline" className={`text-[10px] ${
+                          status === "online" ? "text-emerald border-emerald/30" : status === "warning" ? "text-accent border-accent/30" : "text-destructive border-destructive/30"
+                        }`}>
+                          {status === "online" ? "متصل" : status === "warning" ? "بطيء" : "غير متصل"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+            {stores.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground text-sm font-arabic">
+                <Cpu className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                لا توجد متاجر مسجلة بعد
+              </div>
+            )}
+          </motion.div>
+        )}
+
+
         {activeTab === "approvals" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <div className="flex items-center gap-2 mb-2">
