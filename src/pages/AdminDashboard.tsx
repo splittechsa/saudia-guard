@@ -77,6 +77,9 @@ export default function AdminDashboard() {
   const [apiKeys, setApiKeys] = useState<Record<string, { api_key: string; is_active: boolean }>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null);
+  const [broadcastMsg, setBroadcastMsg] = useState("");
+  const [broadcastTarget, setBroadcastTarget] = useState("all");
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
 
   useEffect(() => {
     fetchAll();
