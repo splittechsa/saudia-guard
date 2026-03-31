@@ -209,6 +209,23 @@ export default function AdminDashboard() {
     fetchAll();
   };
 
+  const handleSendBroadcast = async () => {
+    if (!broadcastMsg.trim()) { toast.error("اكتب رسالة البث أولاً"); return; }
+    if (!user) return;
+    setSendingBroadcast(true);
+    const { error } = await supabase.from("broadcasts").insert({
+      sender_id: user.id,
+      message: broadcastMsg.trim(),
+      target_role: broadcastTarget,
+    });
+    if (error) { toast.error("فشل إرسال البث"); }
+    else {
+      toast.success("📢 تم إرسال البث لجميع المستخدمين");
+      setBroadcastMsg("");
+    }
+    setSendingBroadcast(false);
+  };
+
   const tierNameAr = (tier: string) => tier === "basic" ? "أساسي" : tier === "pro" ? "احترافي" : "مؤسسي";
 
   const tabs = [
