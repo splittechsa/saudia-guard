@@ -233,12 +233,21 @@ export default function Dashboard() {
     ? Math.round(todayAudits.reduce((sum, a) => sum + (a.score || 0), 0) / todayAudits.length)
     : 0;
 
+  const handleDispute = async (auditId: string) => {
+    const { error } = await supabase.from("analytics_logs").update({ disputed: true }).eq("id", auditId);
+    if (error) { toast.error("خطأ في تسجيل الطعن"); return; }
+    toast.success("تم تسجيل الطعن — سيراجعها الفريق التقني");
+    setAudits((prev) => prev.map((a) => a.id === auditId ? { ...a, disputed: true } : a));
+  };
+
   const recentAudits = audits.slice(0, 5).map((a) => ({
+    id: a.id,
     storeName: storeNameMap[a.store_id] || a.summary || "متجر",
     time: new Date(a.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
     status: (a.status === "fail" ? "fail" : a.status === "warning" ? "warning" : "pass") as "pass" | "warning" | "fail",
     summary: a.result ? summarizeResult(a.result) : a.summary || "لا توجد تفاصيل",
     score: a.score || 0,
+    disputed: (a as any).disputed ?? false,
   }));
 
   return (
