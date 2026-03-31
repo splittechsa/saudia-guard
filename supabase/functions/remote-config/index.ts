@@ -51,8 +51,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Only return approved custom_queries
-    const approvedQueries = data.query_status === "approved" ? (data.custom_queries || []) : [];
+    // Filter custom_queries: only return items with status "approved"
+    // Support both array-of-objects (with per-query status) and legacy string arrays
+    let approvedQueries: any[] = [];
+    const queries = data.custom_queries || [];
+    
+    if (Array.isArray(queries)) {
+      if (queries.length > 0 && typeof queries[0] === "object" && queries[0] !== null) {
+        // Per-query approval: each query object has its own status
+        approvedQueries = queries.filter((q: any) => q.status === "approved");
+      } else {
+        // Legacy: simple string array — use store-level query_status
+        approvedQueries = data.query_status === "approved" ? queries : [];
+      }
+    }
 
     // Build config — only include camera_password for service role
     const config: Record<string, any> = {

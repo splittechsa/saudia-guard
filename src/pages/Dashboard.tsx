@@ -125,9 +125,9 @@ export default function Dashboard() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={Store} label="المتاجر النشطة" value={String(stores.length)} change={stores.length > 0 ? "مُفعّلة" : "لا يوجد"} changeType="positive" glowColor="blue" />
-          <StatCard icon={Eye} label="تدقيقات اليوم" value={String(todayAudits.length)} change={todayAudits.length > 0 ? "مباشر" : "بانتظار البيانات"} changeType="positive" glowColor="emerald" />
-          <StatCard icon={BarChart3} label="متوسط النتيجة" value={avgScore > 0 ? `${avgScore}%` : "--"} change={avgScore >= 80 ? "أداء ممتاز" : avgScore > 0 ? "يحتاج تحسين" : "لا توجد بيانات"} changeType={avgScore >= 80 ? "positive" : avgScore > 0 ? "negative" : "neutral"} glowColor="gold" />
+          <StatCard icon={Store} label="المتاجر النشطة" value={String(stores.length)} numericValue={stores.length} change={stores.length > 0 ? "مُفعّلة" : "لا يوجد"} changeType="positive" glowColor="blue" />
+          <StatCard icon={Eye} label="تدقيقات اليوم" value={String(todayAudits.length)} numericValue={todayAudits.length} change={todayAudits.length > 0 ? "مباشر" : "بانتظار البيانات"} changeType="positive" glowColor="emerald" />
+          <StatCard icon={BarChart3} label="متوسط النتيجة" value={avgScore > 0 ? `${avgScore}%` : "--"} numericValue={avgScore > 0 ? avgScore : undefined} change={avgScore >= 80 ? "أداء ممتاز" : avgScore > 0 ? "يحتاج تحسين" : "لا توجد بيانات"} changeType={avgScore >= 80 ? "positive" : avgScore > 0 ? "negative" : "neutral"} glowColor="gold" />
           <StatCard icon={Cpu} label="الأجهزة" value={stores.filter((s) => s.hardware_choice).length + "/" + stores.length} change={pendingSetupStore ? "يحتاج إعداد" : "مكتمل"} changeType={pendingSetupStore ? "negative" : "positive"} glowColor="blue" />
         </div>
 

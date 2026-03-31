@@ -247,7 +247,7 @@ export default function AdminDashboard() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     className={`rounded-xl bg-card border p-4 transition-all ${
-                      isFail ? "border-destructive/50 shadow-[0_0_25px_-5px_hsl(0,84%,60%,0.4)] animate-pulse" : "border-border"
+                      isFail ? "border-destructive/50 glow-red-pulse" : "border-border"
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
