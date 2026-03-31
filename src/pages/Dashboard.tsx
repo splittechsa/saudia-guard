@@ -262,6 +262,9 @@ export default function Dashboard() {
     <DashboardLayout>
       {showWelcome && <WelcomeTutorial onClose={() => setShowWelcome(false)} />}
       <div className="space-y-6">
+        {/* Broadcast Banner */}
+        <BroadcastBanner />
+
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <h1 className="text-2xl font-bold text-foreground font-arabic">مرحباً، {displayName}</h1>
           <p className="text-sm text-muted-foreground mt-1 font-arabic">نظرة عامة على العمليات التشغيلية لهذا اليوم</p>
