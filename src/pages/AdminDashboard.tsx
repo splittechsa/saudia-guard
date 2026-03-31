@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, DollarSign, Server, AlertTriangle, Shield, CheckCircle, XCircle, Clock, Eye, MessageSquare, UserPlus, Search, Cpu, Wifi, WifiOff, Key, Copy } from "lucide-react";
+import { Users, DollarSign, Server, AlertTriangle, Shield, CheckCircle, XCircle, Clock, Eye, MessageSquare, UserPlus, Search, Cpu, Wifi, WifiOff, Key, Copy, Activity, Store } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -19,9 +19,11 @@ interface StoreRow {
   user_id: string;
   hardware_choice: string | null;
   is_active: boolean | null;
+  store_status: string;
   custom_queries: any;
   query_status: string;
   created_at: string;
+  reviewed_at: string | null;
 }
 
 interface AlertRow {
@@ -133,6 +135,17 @@ export default function AdminDashboard() {
   const unresolvedAlerts = alerts.filter((a) => !a.resolved);
   const criticalAlerts = unresolvedAlerts.filter((a) => a.alert_type === "critical" || a.alert_type === "tampering");
   const storeNameMap = Object.fromEntries(stores.map((s) => [s.id, s.name]));
+
+  // Store lifecycle stats
+  const draftStores = stores.filter(s => s.store_status === "draft" || !s.store_status);
+  const pendingReviewStores = stores.filter(s => s.store_status === "pending_review");
+  const activeStores = stores.filter(s => s.store_status === "active");
+  const suspendedStores = stores.filter(s => s.store_status === "suspended");
+
+  // IT performance: stores approved today
+  const todayStr = new Date().toDateString();
+  const approvedToday = stores.filter(s => s.reviewed_at && new Date(s.reviewed_at).toDateString() === todayStr).length;
+  const pendingTickets = tickets.filter(t => t.status === "open" || t.status === "in_progress").length;
 
   const storeLastAudit = liveAudits.reduce((acc, a) => {
     if (!acc[a.store_id] || new Date(a.created_at) > new Date(acc[a.store_id])) {
@@ -260,7 +273,7 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard icon={Users} label="إجمالي التجار" value={String(new Set(stores.map(s => s.user_id)).size)} change={`${stores.length} متجر`} changeType="positive" glowColor="blue" />
             <StatCard icon={DollarSign} label="الإيرادات الشهرية" value={`${mrr.toLocaleString("ar-SA")} ر.س`} change={`${subs.length} اشتراك نشط`} changeType="positive" glowColor="gold" />
-            <StatCard icon={Server} label="الأجهزة النشطة" value={String(stores.filter(s => s.hardware_choice).length)} change={`${stores.filter(s => !s.hardware_choice).length} بدون جهاز`} changeType={stores.some(s => !s.hardware_choice) ? "negative" : "positive"} glowColor="emerald" />
+            <StatCard icon={Store} label="دورة الحياة" value={`${activeStores.length} نشط`} change={`${pendingReviewStores.length} بانتظار IT`} changeType={pendingReviewStores.length > 0 ? "negative" : "positive"} glowColor="emerald" />
             <StatCard icon={AlertTriangle} label="التنبيهات الأمنية" value={String(unresolvedAlerts.length)} change={criticalAlerts.length > 0 ? `${criticalAlerts.length} حرجة` : "لا توجد"} changeType={criticalAlerts.length > 0 ? "negative" : "positive"} glowColor="blue" />
           </div>
         )}
@@ -314,6 +327,46 @@ export default function AdminDashboard() {
               </div>
             </motion.div>
 
+            {/* IT Performance & Store Lifecycle */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="rounded-xl bg-card border border-border p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Activity className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground font-arabic">أداء الـ IT ودورة حياة المتاجر</h3>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="rounded-lg bg-secondary/30 p-3 text-center">
+                  <p className="text-lg font-bold text-muted-foreground font-mono">{draftStores.length}</p>
+                  <p className="text-[10px] text-muted-foreground font-arabic">مسودة</p>
+                </div>
+                <div className="rounded-lg bg-accent/10 border border-accent/20 p-3 text-center">
+                  <p className="text-lg font-bold text-accent font-mono">{pendingReviewStores.length}</p>
+                  <p className="text-[10px] text-accent font-arabic">بانتظار IT</p>
+                </div>
+                <div className="rounded-lg bg-emerald/10 border border-emerald/20 p-3 text-center">
+                  <p className="text-lg font-bold text-emerald font-mono">{activeStores.length}</p>
+                  <p className="text-[10px] text-emerald font-arabic">نشط</p>
+                </div>
+                <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-center">
+                  <p className="text-lg font-bold text-destructive font-mono">{suspendedStores.length}</p>
+                  <p className="text-[10px] text-destructive font-arabic">معلّق</p>
+                </div>
+                <div className="rounded-lg bg-primary/10 border border-primary/20 p-3 text-center">
+                  <p className="text-lg font-bold text-primary font-mono">{approvedToday}</p>
+                  <p className="text-[10px] text-primary font-arabic">فعّلها IT اليوم</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-accent" />
+                  <span className="text-xs text-muted-foreground font-arabic">تذاكر معلقة: <span className="text-foreground font-bold">{pendingTickets}</span></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-destructive" />
+                  <span className="text-xs text-muted-foreground font-arabic">تنبيهات حرجة: <span className="text-foreground font-bold">{criticalAlerts.length}</span></span>
+                </div>
+              </div>
+            </motion.div>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="lg:col-span-2 rounded-xl bg-card border border-border p-5">
                 <h3 className="text-sm font-semibold text-foreground mb-4 font-arabic">المتاجر المسجلة {q && `(${filteredStores.length})`}</h3>
@@ -326,10 +379,17 @@ export default function AdminDashboard() {
                           <p className="text-[10px] text-muted-foreground font-mono">{store.id.slice(0, 8)}</p>
                         </div>
                         <div className="flex items-center gap-2">
+                          <Badge variant="outline" className={`text-[10px] ${
+                            store.store_status === "active" ? "text-emerald border-emerald/30" :
+                            store.store_status === "pending_review" ? "text-accent border-accent/30" :
+                            store.store_status === "suspended" ? "text-destructive border-destructive/30" :
+                            "text-muted-foreground border-border"
+                          }`}>
+                            {store.store_status === "active" ? "نشط" : store.store_status === "pending_review" ? "بانتظار IT" : store.store_status === "suspended" ? "معلّق" : "مسودة"}
+                          </Badge>
                           <Badge variant="outline" className={`text-[10px] ${store.hardware_choice ? "text-emerald border-emerald/30" : "text-accent border-accent/30"}`}>
                             {store.hardware_choice || "بدون جهاز"}
                           </Badge>
-                          <div className={`w-2 h-2 rounded-full ${store.is_active ? "bg-emerald" : "bg-destructive"}`} />
                         </div>
                       </div>
                     ))}

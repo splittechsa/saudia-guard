@@ -172,11 +172,15 @@ export type Database = {
           id: string
           interval_minutes: number | null
           is_active: boolean | null
+          it_review_notes: string | null
           name: string
           operating_hours: Json | null
           query_status: string
           remote_command: string
+          reviewed_at: string | null
+          reviewed_by: string | null
           rtsp_url: string | null
+          store_status: string
           updated_at: string
           user_id: string
         }
@@ -190,11 +194,15 @@ export type Database = {
           id?: string
           interval_minutes?: number | null
           is_active?: boolean | null
+          it_review_notes?: string | null
           name: string
           operating_hours?: Json | null
           query_status?: string
           remote_command?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           rtsp_url?: string | null
+          store_status?: string
           updated_at?: string
           user_id: string
         }
@@ -208,11 +216,15 @@ export type Database = {
           id?: string
           interval_minutes?: number | null
           is_active?: boolean | null
+          it_review_notes?: string | null
           name?: string
           operating_hours?: Json | null
           query_status?: string
           remote_command?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           rtsp_url?: string | null
+          store_status?: string
           updated_at?: string
           user_id?: string
         }
