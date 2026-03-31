@@ -131,9 +131,9 @@ export default function ITDashboard() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={Store} label="إجمالي المتاجر" value={storeHealths.length} />
-          <StatCard icon={Wifi} label="متصل" value={onlineCount} accentColor="text-emerald-400" />
-          <StatCard icon={AlertTriangle} label="تحذير / منقطع" value={`${warningCount} / ${offlineCount}`} accentColor="text-yellow-400" />
+          <StatCard icon={Store} label="إجمالي المتاجر" value={String(storeHealths.length)} />
+          <StatCard icon={Wifi} label="متصل" value={String(onlineCount)} glowColor="emerald" />
+          <StatCard icon={AlertTriangle} label="تحذير / منقطع" value={`${warningCount} / ${offlineCount}`} />
           <StatCard icon={Activity} label="متوسط النقاط" value={`${avgScore}%`} />
         </div>
 
