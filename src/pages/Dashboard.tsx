@@ -10,6 +10,7 @@ import { ComparativeChart } from "@/components/dashboard/ComparativeChart";
 import { WelcomeTutorial } from "@/components/dashboard/WelcomeTutorial";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { StatCardSkeleton, TableSkeleton } from "@/components/ui/carbon-skeleton";
 import { Button } from "@/components/ui/button";
