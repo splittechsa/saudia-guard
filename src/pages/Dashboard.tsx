@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Store, BarChart3, Shield, TrendingUp, Eye, Cpu, Clock, Users } from "lucide-react";
+import { Store, BarChart3, Shield, TrendingUp, Eye, Cpu, Clock, Users, Rocket, Camera, ClipboardCheck, CreditCard } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
 import { AuditLogItem } from "@/components/ui/audit-log-item";
@@ -8,11 +9,21 @@ import HardwareSetup from "@/components/dashboard/HardwareSetup";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { StatCardSkeleton, TableSkeleton } from "@/components/ui/carbon-skeleton";
+import { Button } from "@/components/ui/button";
 
 interface StoreData {
   id: string;
   name: string;
   hardware_choice: string | null;
+  is_active: boolean | null;
+}
+
+interface SubData {
+  id: string;
+  tier: string;
+  status: string;
+  price_sar: number;
 }
 
 interface AuditLog {
@@ -25,26 +36,48 @@ interface AuditLog {
   created_at: string;
 }
 
+type DashState = "loading" | "no_subscription" | "pending_approval" | "active";
+
 export default function Dashboard() {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
+  const [dashState, setDashState] = useState<DashState>("loading");
   const [stores, setStores] = useState<StoreData[]>([]);
+  const [subscription, setSubscription] = useState<SubData | null>(null);
   const [pendingSetupStore, setPendingSetupStore] = useState<StoreData | null>(null);
   const [audits, setAudits] = useState<AuditLog[]>([]);
   const [chartData, setChartData] = useState<{ time: string; score: number }[]>([]);
 
-  // Fetch stores & audits
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
-      const [storesRes, auditsRes] = await Promise.all([
-        supabase.from("stores").select("id, name, hardware_choice").eq("user_id", user.id),
+      const [storesRes, subsRes, auditsRes] = await Promise.all([
+        supabase.from("stores").select("id, name, hardware_choice, is_active").eq("user_id", user.id),
+        supabase.from("subscriptions").select("id, tier, status, price_sar").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1),
         supabase.from("analytics_logs").select("*").order("created_at", { ascending: false }).limit(50),
       ]);
-      if (storesRes.data) {
-        setStores(storesRes.data);
-        const needsSetup = storesRes.data.find((s: StoreData) => !s.hardware_choice);
-        if (needsSetup) setPendingSetupStore(needsSetup);
+
+      const storesData = storesRes.data || [];
+      const subData = subsRes.data?.[0] || null;
+
+      setStores(storesData);
+      setSubscription(subData);
+
+      if (!subData && storesData.length === 0) {
+        setDashState("no_subscription");
+        return;
       }
+
+      if (subData?.status === "pending") {
+        setDashState("pending_approval");
+        return;
+      }
+
+      setDashState("active");
+
+      const needsSetup = storesData.find((s) => !s.hardware_choice);
+      if (needsSetup) setPendingSetupStore(needsSetup);
+
       if (auditsRes.data) {
         setAudits(auditsRes.data as AuditLog[]);
         buildChart(auditsRes.data as AuditLog[]);
@@ -53,9 +86,9 @@ export default function Dashboard() {
     fetchData();
   }, [user]);
 
-  // Realtime subscription for live audit updates
+  // Realtime for active state
   useEffect(() => {
-    if (!user) return;
+    if (!user || dashState !== "active") return;
     const channel = supabase
       .channel("live-audits")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_logs" }, (payload) => {
@@ -63,36 +96,127 @@ export default function Dashboard() {
         setAudits((prev) => [newLog, ...prev].slice(0, 50));
         setChartData((prev) => {
           const time = new Date(newLog.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
-          const updated = [...prev, { time, score: newLog.score || 0 }];
-          return updated.slice(-20);
+          return [...prev, { time, score: newLog.score || 0 }].slice(-20);
         });
       })
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
-  }, [user]);
+  }, [user, dashState]);
 
   const buildChart = (logs: AuditLog[]) => {
     const scored = logs.filter((l) => l.score !== null).reverse().slice(-20);
-    setChartData(
-      scored.map((l) => ({
-        time: new Date(l.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
-        score: l.score || 0,
-      }))
-    );
+    setChartData(scored.map((l) => ({
+      time: new Date(l.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
+      score: l.score || 0,
+    })));
   };
 
+  const displayName = profile?.full_name || user?.email?.split("@")[0] || "التاجر";
+
+  // ── Loading State ──
+  if (dashState === "loading") {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div className="h-8 w-48 rounded bg-secondary animate-pulse" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => <StatCardSkeleton key={i} />)}
+          </div>
+          <TableSkeleton rows={5} />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // ── No Subscription — Redirect to Onboarding ──
+  if (dashState === "no_subscription") {
+    return (
+      <DashboardLayout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-lg text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 mb-6">
+              <Rocket className="w-8 h-8 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold text-foreground mb-3 font-arabic">أهلاً بك في ذكاء سبلت</h2>
+            <p className="text-muted-foreground mb-2 font-arabic">جاري تجهيز نظام الرقابة الخاص بك.</p>
+            <p className="text-sm text-muted-foreground mb-8 font-arabic">أكمل إعداد حسابك لبدء التدقيق الآلي بالذكاء الاصطناعي</p>
+
+            <div className="grid grid-cols-3 gap-3 mb-8">
+              {[
+                { icon: CreditCard, label: "اختيار الباقة", desc: "حدد خطة تناسب احتياجاتك" },
+                { icon: Camera, label: "ربط الكاميرا", desc: "أضف بيانات RTSP الخاصة بك" },
+                { icon: ClipboardCheck, label: "بدء التدقيق", desc: "مراقبة آلية على مدار الساعة" },
+              ].map((s, i) => (
+                <div key={i} className="rounded-xl bg-card border border-border p-4 text-center">
+                  <s.icon className="w-5 h-5 text-primary mx-auto mb-2" />
+                  <p className="text-xs font-bold text-foreground font-arabic">{s.label}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1 font-arabic">{s.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            <Button onClick={() => navigate("/onboarding")} className="bg-primary text-primary-foreground hover:bg-primary/90 font-arabic px-8">
+              <Rocket className="w-4 h-4 me-2" /> ابدأ الإعداد
+            </Button>
+          </motion.div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // ── Pending Approval State ──
+  if (dashState === "pending_approval") {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <h1 className="text-2xl font-bold text-foreground font-arabic">مرحباً، {displayName}</h1>
+          </motion.div>
+
+          {/* Pending overlay */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-card border border-accent/30 p-8 text-center">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 mb-4">
+              <Clock className="w-7 h-7 text-accent animate-pulse" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-2 font-arabic">طلبك قيد المراجعة</h2>
+            <p className="text-sm text-muted-foreground mb-1 font-arabic">
+              تم استلام طلب الاشتراك في باقة <span className="text-accent font-bold">{subscription?.tier === "basic" ? "الأساسي" : subscription?.tier === "pro" ? "الاحترافي" : "المؤسسي"}</span>
+            </p>
+            <p className="text-xs text-muted-foreground font-arabic">سيقوم فريق الإدارة بمراجعة طلبك وتفعيل حسابك في أقرب وقت.</p>
+
+            <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent/5 border border-accent/20">
+              <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+              <span className="text-xs text-accent font-mono">PENDING APPROVAL</span>
+            </div>
+          </motion.div>
+
+          {/* Demo Data Preview */}
+          <div className="relative">
+            <div className="absolute inset-0 z-10 flex items-center justify-center">
+              <div className="bg-background/80 backdrop-blur-sm rounded-xl px-6 py-3 border border-border">
+                <p className="text-sm text-muted-foreground font-arabic">⏳ بانتظار مزامنة الكاميرا...</p>
+              </div>
+            </div>
+            <div className="opacity-30 pointer-events-none">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard icon={Store} label="المتاجر النشطة" value="1" numericValue={1} change="تجريبي" changeType="neutral" glowColor="blue" />
+                <StatCard icon={Eye} label="تدقيقات اليوم" value="--" change="بانتظار البيانات" changeType="neutral" glowColor="emerald" />
+                <StatCard icon={BarChart3} label="متوسط النتيجة" value="--" change="لا توجد بيانات" changeType="neutral" glowColor="gold" />
+                <StatCard icon={Cpu} label="الأجهزة" value="0/1" change="يحتاج إعداد" changeType="negative" glowColor="blue" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // ── Active Dashboard ──
   const storeNameMap = Object.fromEntries(stores.map((s) => [s.id, s.name]));
-  const todayAudits = audits.filter((a) => {
-    const d = new Date(a.created_at);
-    const today = new Date();
-    return d.toDateString() === today.toDateString();
-  });
+  const todayAudits = audits.filter((a) => new Date(a.created_at).toDateString() === new Date().toDateString());
   const avgScore = todayAudits.length > 0
     ? Math.round(todayAudits.reduce((sum, a) => sum + (a.score || 0), 0) / todayAudits.length)
     : 0;
-
-  const displayName = profile?.full_name || user?.email?.split("@")[0] || "التاجر";
 
   const recentAudits = audits.slice(0, 5).map((a) => ({
     storeName: storeNameMap[a.store_id] || a.summary || "متجر",
@@ -116,7 +240,7 @@ export default function Dashboard() {
             onComplete={() => {
               setPendingSetupStore(null);
               if (user) {
-                supabase.from("stores").select("id, name, hardware_choice").eq("user_id", user.id).then(({ data }) => {
+                supabase.from("stores").select("id, name, hardware_choice, is_active").eq("user_id", user.id).then(({ data }) => {
                   if (data) setStores(data);
                 });
               }
@@ -173,9 +297,7 @@ export default function Dashboard() {
                   بانتظار بيانات من محرك سبلت
                 </div>
               ) : (
-                recentAudits.map((audit, i) => (
-                  <AuditLogItem key={i} {...audit} />
-                ))
+                recentAudits.map((audit, i) => <AuditLogItem key={i} {...audit} />)
               )}
             </div>
           </motion.div>
