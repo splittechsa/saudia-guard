@@ -273,7 +273,7 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard icon={Users} label="إجمالي التجار" value={String(new Set(stores.map(s => s.user_id)).size)} change={`${stores.length} متجر`} changeType="positive" glowColor="blue" />
             <StatCard icon={DollarSign} label="الإيرادات الشهرية" value={`${mrr.toLocaleString("ar-SA")} ر.س`} change={`${subs.length} اشتراك نشط`} changeType="positive" glowColor="gold" />
-            <StatCard icon={Server} label="الأجهزة النشطة" value={String(stores.filter(s => s.hardware_choice).length)} change={`${stores.filter(s => !s.hardware_choice).length} بدون جهاز`} changeType={stores.some(s => !s.hardware_choice) ? "negative" : "positive"} glowColor="emerald" />
+            <StatCard icon={Store} label="دورة الحياة" value={`${activeStores.length} نشط`} change={`${pendingReviewStores.length} بانتظار IT`} changeType={pendingReviewStores.length > 0 ? "negative" : "positive"} glowColor="emerald" />
             <StatCard icon={AlertTriangle} label="التنبيهات الأمنية" value={String(unresolvedAlerts.length)} change={criticalAlerts.length > 0 ? `${criticalAlerts.length} حرجة` : "لا توجد"} changeType={criticalAlerts.length > 0 ? "negative" : "positive"} glowColor="blue" />
           </div>
         )}
