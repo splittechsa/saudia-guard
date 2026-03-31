@@ -264,6 +264,8 @@ export default function Dashboard() {
           <StatCard icon={Cpu} label="الأجهزة" value={stores.filter((s) => s.hardware_choice).length + "/" + stores.length} change={pendingSetupStore ? "يحتاج إعداد" : "مكتمل"} changeType={pendingSetupStore ? "negative" : "positive"} glowColor="blue" />
         </div>
 
+        <ComparativeChart audits={audits} />
+
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="lg:col-span-3 rounded-xl bg-card border border-border p-5">
             <div className="flex items-center justify-between mb-4">

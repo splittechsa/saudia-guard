@@ -18,6 +18,7 @@ import Support from "./pages/Support";
 import Reports from "./pages/Reports";
 import StoreSetup from "./pages/StoreSetup";
 import SystemStatus from "./pages/SystemStatus";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
