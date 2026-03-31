@@ -38,6 +38,7 @@ const ROLE_LABELS: Record<string, string> = {
   it_support: "الدعم التقني",
   customer_support: "دعم العملاء",
   super_owner: "المالك",
+  ai_bot: "المساعد الذكي",
 };
 
 const ROLE_ICONS: Record<string, typeof User> = {
@@ -45,6 +46,7 @@ const ROLE_ICONS: Record<string, typeof User> = {
   it_support: Wrench,
   super_owner: Shield,
   customer_support: User,
+  ai_bot: Bot,
 };
 
 export default function TicketChat({ ticket, onClose, onStatusChange, senderRole = "merchant" }: TicketChatProps) {
