@@ -286,6 +286,9 @@ export default function ITDashboard() {
           </div>
         </div>
 
+        {/* Broadcast Banner */}
+        <BroadcastBanner />
+
         {/* Offline Alert Banner */}
         {offlineCount > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-xl bg-destructive/10 border border-destructive/30 p-4 flex items-center gap-3">
