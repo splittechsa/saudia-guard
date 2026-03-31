@@ -51,10 +51,16 @@ export default function StoreSetup() {
     setCamPass(store.camera_password || "");
   };
 
+  const RTSP_REGEX = /^rtsp:\/\/[\w.-]+(:\d+)?(\/\S*)?$/;
+
   const handleSave = async () => {
     if (!selectedStore) return;
     if (!rtspUrl.trim()) {
       toast.error("الرجاء إدخال رابط RTSP");
+      return;
+    }
+    if (!RTSP_REGEX.test(rtspUrl.trim())) {
+      toast.error("صيغة رابط RTSP غير صحيحة. مثال: rtsp://192.168.1.100:554/stream1");
       return;
     }
     setSaving(true);

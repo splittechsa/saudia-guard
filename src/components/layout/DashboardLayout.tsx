@@ -3,9 +3,10 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Store, BarChart3, Shield, Settings, LogOut,
-  Bell, ChevronLeft, ChevronRight, Zap, Users, HelpCircle, Activity, MessageSquare, Camera
+  Bell, ChevronLeft, ChevronRight, Zap, Users, HelpCircle, Activity, MessageSquare, Camera, Server
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { ConnectionPulse } from "@/components/ui/connection-pulse";
 
 const navItems = [
   { icon: LayoutDashboard, label: "نظرة عامة", path: "/dashboard" },
@@ -18,6 +19,7 @@ const navItems = [
 
 const adminItems = [
   { icon: LayoutDashboard, label: "نظرة عامة", path: "/admin" },
+  { icon: Server, label: "حالة النظام", path: "/admin/system-status" },
   { icon: Users, label: "التجار والمتاجر", path: "/admin" },
   { icon: Shield, label: "التنبيهات الأمنية", path: "/admin" },
   { icon: MessageSquare, label: "تذاكر الدعم", path: "/admin" },
@@ -93,6 +95,7 @@ export default function DashboardLayout({ children, isAdmin = false }: { childre
               <p className="text-xs text-muted-foreground font-mono">{new Date().toLocaleDateString("ar-SA", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
             </div>
             <div className="flex items-center gap-3">
+              <ConnectionPulse />
               <button className="relative p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-destructive" />

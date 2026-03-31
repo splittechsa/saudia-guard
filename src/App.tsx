@@ -17,6 +17,7 @@ import SLA from "./pages/SLA";
 import Support from "./pages/Support";
 import Reports from "./pages/Reports";
 import StoreSetup from "./pages/StoreSetup";
+import SystemStatus from "./pages/SystemStatus";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/dashboard/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
             <Route path="/dashboard/store-setup" element={<ProtectedRoute><StoreSetup /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requiredRole="super_owner"><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/system-status" element={<ProtectedRoute requiredRole="super_owner"><SystemStatus /></ProtectedRoute>} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/sla" element={<SLA />} />
