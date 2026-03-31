@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { ConnectionPulse } from "@/components/ui/connection-pulse";
+import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 
 const navItems = [
   { icon: LayoutDashboard, label: "نظرة عامة", path: "/dashboard" },
