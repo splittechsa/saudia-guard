@@ -89,12 +89,13 @@ export default function TicketChat({ ticket, onClose, onStatusChange, senderRole
 
   const handleSend = async () => {
     if (!user || !newMsg.trim() || isResolved) return;
+    const msgText = newMsg.trim();
     setSending(true);
     const { error } = await supabase.from("ticket_messages").insert({
       ticket_id: ticket.id,
       sender_id: user.id,
       sender_role: senderRole,
-      message: newMsg.trim(),
+      message: msgText,
     });
     setSending(false);
     if (error) {
@@ -102,6 +103,27 @@ export default function TicketChat({ ticket, onClose, onStatusChange, senderRole
       return;
     }
     setNewMsg("");
+
+    // Trigger AI bot response for merchant messages
+    if (senderRole === "merchant") {
+      setAiThinking(true);
+      try {
+        const history = messages.slice(-10).map(m => ({
+          role: m.sender_role === "ai_bot" ? "assistant" as const : "user" as const,
+          content: m.message,
+        }));
+
+        const { data, error: fnError } = await supabase.functions.invoke("ai-support-chat", {
+          body: { ticket_id: ticket.id, message: msgText, conversation_history: history },
+        });
+
+        if (fnError) console.error("AI bot error:", fnError);
+      } catch (e) {
+        console.error("AI bot error:", e);
+      } finally {
+        setAiThinking(false);
+      }
+    }
   };
 
   const handleResolve = () => {
