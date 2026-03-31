@@ -371,6 +371,9 @@ export default function Reports() {
           </motion.div>
         </div>
 
+        {/* Live Audit Feed */}
+        <LiveAuditFeed storeIds={stores.map((s) => s.id)} storeNameMap={storeNameMap} />
+
         {/* Audit Table */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl bg-card border border-border overflow-hidden">
           <div className="p-4 border-b border-border">
