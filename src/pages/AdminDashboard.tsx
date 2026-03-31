@@ -73,7 +73,8 @@ export default function AdminDashboard() {
   const [liveAudits, setLiveAudits] = useState<LiveAudit[]>([]);
   const [profiles, setProfiles] = useState<Record<string, ProfileRow>>({});
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "surveillance" | "queries" | "approvals" | "alerts" | "tickets">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "surveillance" | "engines" | "queries" | "approvals" | "alerts" | "tickets">("overview");
+  const [apiKeys, setApiKeys] = useState<Record<string, { api_key: string; is_active: boolean }>>({});
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
