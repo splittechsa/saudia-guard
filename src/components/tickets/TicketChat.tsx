@@ -208,6 +208,7 @@ export default function TicketChat({ ticket, onClose, onStatusChange, senderRole
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
                   msg.sender_role === "super_owner" ? "bg-destructive/20" :
                   msg.sender_role === "it_support" ? "bg-accent/20" :
+                  msg.sender_role === "ai_bot" ? "bg-emerald/20" :
                   "bg-primary/20"
                 }`}>
                   <RoleIcon className="w-3.5 h-3.5 text-foreground" />
