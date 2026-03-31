@@ -8,6 +8,8 @@ import { AuditLogItem } from "@/components/ui/audit-log-item";
 import HardwareSetup from "@/components/dashboard/HardwareSetup";
 import { ComparativeChart } from "@/components/dashboard/ComparativeChart";
 import { WelcomeTutorial } from "@/components/dashboard/WelcomeTutorial";
+import { OperatingHoursScheduler } from "@/components/dashboard/OperatingHoursScheduler";
+import { BroadcastBanner } from "@/components/dashboard/BroadcastBanner";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -27,6 +29,11 @@ interface SubData {
   tier: string;
   status: string;
   price_sar: number;
+}
+
+interface StoreWithHours extends StoreData {
+  operating_hours: any;
+  store_status: string;
 }
 
 interface AuditLog {
@@ -62,7 +69,7 @@ export default function Dashboard() {
     if (!user) return;
     const fetchData = async () => {
       const [storesRes, subsRes, auditsRes] = await Promise.all([
-        supabase.from("stores").select("id, name, hardware_choice, is_active").eq("user_id", user.id),
+        supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status").eq("user_id", user.id),
         supabase.from("subscriptions").select("id, tier, status, price_sar").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1),
         supabase.from("analytics_logs").select("*").order("created_at", { ascending: false }).limit(50),
       ]);
@@ -255,6 +262,9 @@ export default function Dashboard() {
     <DashboardLayout>
       {showWelcome && <WelcomeTutorial onClose={() => setShowWelcome(false)} />}
       <div className="space-y-6">
+        {/* Broadcast Banner */}
+        <BroadcastBanner />
+
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <h1 className="text-2xl font-bold text-foreground font-arabic">مرحباً، {displayName}</h1>
           <p className="text-sm text-muted-foreground mt-1 font-arabic">نظرة عامة على العمليات التشغيلية لهذا اليوم</p>
@@ -282,6 +292,20 @@ export default function Dashboard() {
         </div>
 
         <ComparativeChart audits={audits} />
+
+        {/* Operating Hours Scheduler */}
+        {stores.length > 0 && subscription && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {stores.map((s) => (
+              <OperatingHoursScheduler
+                key={s.id}
+                storeId={s.id}
+                operatingHours={(s as any).operating_hours}
+                subscriptionTier={subscription.tier}
+              />
+            ))}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="lg:col-span-3 rounded-xl bg-card border border-border p-5">

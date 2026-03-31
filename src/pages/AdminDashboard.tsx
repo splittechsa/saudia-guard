@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, DollarSign, Server, AlertTriangle, Shield, CheckCircle, XCircle, Clock, Eye, MessageSquare, UserPlus, Search, Cpu, Wifi, WifiOff, Key, Copy, Activity, Store } from "lucide-react";
+import { Users, DollarSign, Server, AlertTriangle, Shield, CheckCircle, XCircle, Clock, Eye, MessageSquare, UserPlus, Search, Cpu, Wifi, WifiOff, Key, Copy, Activity, Store, Megaphone, Send } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -64,7 +65,7 @@ interface LiveAudit {
 }
 
 export default function AdminDashboard() {
-  useAuth();
+  const { user } = useAuth();
   const [stores, setStores] = useState<StoreRow[]>([]);
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [tickets, setTickets] = useState<TicketRow[]>([]);
@@ -72,10 +73,13 @@ export default function AdminDashboard() {
   const [pendingSubs, setPendingSubs] = useState<SubRow[]>([]);
   const [liveAudits, setLiveAudits] = useState<LiveAudit[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "surveillance" | "engines" | "users" | "queries" | "approvals" | "alerts" | "tickets">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "surveillance" | "engines" | "users" | "queries" | "approvals" | "alerts" | "tickets" | "broadcast">("overview");
   const [apiKeys, setApiKeys] = useState<Record<string, { api_key: string; is_active: boolean }>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null);
+  const [broadcastMsg, setBroadcastMsg] = useState("");
+  const [broadcastTarget, setBroadcastTarget] = useState("all");
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
 
   useEffect(() => {
     fetchAll();
@@ -205,6 +209,23 @@ export default function AdminDashboard() {
     fetchAll();
   };
 
+  const handleSendBroadcast = async () => {
+    if (!broadcastMsg.trim()) { toast.error("اكتب رسالة البث أولاً"); return; }
+    if (!user) return;
+    setSendingBroadcast(true);
+    const { error } = await supabase.from("broadcasts").insert({
+      sender_id: user.id,
+      message: broadcastMsg.trim(),
+      target_role: broadcastTarget,
+    });
+    if (error) { toast.error("فشل إرسال البث"); }
+    else {
+      toast.success("📢 تم إرسال البث لجميع المستخدمين");
+      setBroadcastMsg("");
+    }
+    setSendingBroadcast(false);
+  };
+
   const tierNameAr = (tier: string) => tier === "basic" ? "أساسي" : tier === "pro" ? "احترافي" : "مؤسسي";
 
   const tabs = [
@@ -212,6 +233,7 @@ export default function AdminDashboard() {
     { id: "surveillance" as const, label: "عين الإدارة", icon: Eye },
     { id: "engines" as const, label: "المحركات", icon: Cpu },
     { id: "users" as const, label: "المستخدمين", icon: Users },
+    { id: "broadcast" as const, label: "مركز البث", icon: Megaphone },
     { id: "approvals" as const, label: `الطلبات (${pendingSubs.length})`, icon: UserPlus },
     { id: "queries" as const, label: "اعتمادات المتاجر", icon: CheckCircle },
     { id: "alerts" as const, label: `التنبيهات (${unresolvedAlerts.length})`, icon: AlertTriangle },
@@ -655,6 +677,40 @@ export default function AdminDashboard() {
             {stores.filter(s => s.custom_queries && (s.custom_queries as any[]).length > 0).length === 0 && (
               <p className="text-center text-sm text-muted-foreground py-8 font-arabic">لا توجد استعلامات مخصصة للمراجعة</p>
             )}
+          </motion.div>
+        )}
+
+        {/* Broadcast Tab */}
+        {activeTab === "broadcast" && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Megaphone className="w-5 h-5 text-accent" />
+              <h3 className="text-sm font-semibold text-foreground font-arabic">مركز البث — إرسال إعلان لجميع المستخدمين</h3>
+            </div>
+            <div className="rounded-xl bg-card border border-border p-6 space-y-4">
+              <Textarea
+                value={broadcastMsg}
+                onChange={(e) => setBroadcastMsg(e.target.value)}
+                placeholder="اكتب رسالة الإعلان هنا... (مثال: سيتم إيقاف النظام للصيانة يوم الخميس)"
+                className="min-h-[100px] font-arabic"
+              />
+              <div className="flex items-center gap-4">
+                <label className="text-xs text-muted-foreground font-arabic">إرسال إلى:</label>
+                <select
+                  value={broadcastTarget}
+                  onChange={(e) => setBroadcastTarget(e.target.value)}
+                  className="bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-foreground font-arabic"
+                >
+                  <option value="all">جميع المستخدمين</option>
+                  <option value="merchant">التجار فقط</option>
+                  <option value="it_support">فريق IT فقط</option>
+                </select>
+                <div className="flex-1" />
+                <Button onClick={handleSendBroadcast} disabled={sendingBroadcast || !broadcastMsg.trim()} className="font-arabic gap-2">
+                  <Send className="w-4 h-4" /> {sendingBroadcast ? "جاري الإرسال..." : "بث الإعلان"}
+                </Button>
+              </div>
+            </div>
           </motion.div>
         )}
 
