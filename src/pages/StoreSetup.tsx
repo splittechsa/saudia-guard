@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Camera, Wifi, Power, PowerOff, Save, Eye, EyeOff, Clock, Send } from "lucide-react";
+import { Camera, Wifi, Save, Eye, EyeOff, Send } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
