@@ -41,7 +41,7 @@ interface AuditLog {
 type DashState = "loading" | "no_subscription" | "pending_approval" | "active";
 
 export default function Dashboard() {
-  const { user, profile } = useAuth();
+  const { user, profile, hasRole } = useAuth();
   const navigate = useNavigate();
   const [dashState, setDashState] = useState<DashState>("loading");
   const [stores, setStores] = useState<StoreData[]>([]);
@@ -50,6 +50,13 @@ export default function Dashboard() {
   const [audits, setAudits] = useState<AuditLog[]>([]);
   const [chartData, setChartData] = useState<{ time: string; score: number }[]>([]);
   const [showWelcome, setShowWelcome] = useState(false);
+
+  // Role-based redirect: IT/Admin should never see merchant dashboard
+  useEffect(() => {
+    if (hasRole("super_owner")) { navigate("/admin", { replace: true }); return; }
+    if (hasRole("it_support")) { navigate("/it-dashboard", { replace: true }); return; }
+  }, [hasRole, navigate]);
+
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
