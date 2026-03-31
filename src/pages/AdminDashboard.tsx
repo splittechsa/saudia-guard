@@ -136,6 +136,40 @@ export default function AdminDashboard() {
   const criticalAlerts = unresolvedAlerts.filter((a) => a.alert_type === "critical" || a.alert_type === "tampering");
   const storeNameMap = Object.fromEntries(stores.map((s) => [s.id, s.name]));
 
+  // Engine heartbeat: determine last audit time per store
+  const storeLastAudit = liveAudits.reduce((acc, a) => {
+    if (!acc[a.store_id] || new Date(a.created_at) > new Date(acc[a.store_id])) {
+      acc[a.store_id] = a.created_at;
+    }
+    return acc;
+  }, {} as Record<string, string>);
+
+  const getEngineStatus = (storeId: string) => {
+    const lastAudit = storeLastAudit[storeId];
+    if (!lastAudit) return "offline";
+    const diffMin = (Date.now() - new Date(lastAudit).getTime()) / 60000;
+    if (diffMin <= 15) return "online";
+    if (diffMin <= 30) return "warning";
+    return "offline";
+  };
+
+  const handleGenerateApiKey = async (storeId: string) => {
+    const { error } = await supabase.from("store_api_keys").insert({ store_id: storeId });
+    if (error && error.code === "23505") {
+      toast.error("المفتاح موجود مسبقاً لهذا المتجر");
+    } else if (error) {
+      toast.error("خطأ في إنشاء المفتاح");
+    } else {
+      toast.success("تم إنشاء API Key بنجاح");
+      fetchAll();
+    }
+  };
+
+  const copyApiKey = (key: string) => {
+    navigator.clipboard.writeText(key);
+    toast.success("تم نسخ المفتاح");
+  };
+
   const handleQueryApproval = async (storeId: string, approved: boolean) => {
     await supabase.from("stores").update({ query_status: approved ? "approved" : "rejected" }).eq("id", storeId);
     toast.success(approved ? "تمت الموافقة على الاستعلامات" : "تم رفض الاستعلامات");
