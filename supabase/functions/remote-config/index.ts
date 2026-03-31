@@ -26,7 +26,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check if request is authenticated (service role or valid JWT)
     const authHeader = req.headers.get("Authorization");
     const apiKey = req.headers.get("apikey") || url.searchParams.get("apikey");
     const isServiceRole = apiKey === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -40,7 +39,7 @@ Deno.serve(async (req) => {
 
     const { data, error } = await supabase
       .from("stores")
-      .select("id, name, custom_queries, query_status, operating_hours, hardware_choice, rtsp_url, camera_username, camera_password, is_active, interval_minutes, remote_command")
+      .select("id, name, custom_queries, query_status, operating_hours, hardware_choice, rtsp_url, camera_username, camera_password, is_active, interval_minutes, remote_command, debug_mode")
       .eq("id", storeId)
       .single();
 
@@ -51,7 +50,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Filter custom_queries: only return items with status "approved"
     let approvedQueries: any[] = [];
     const queries = data.custom_queries || [];
     
@@ -63,7 +61,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Build config — only include camera_password for service role
     const config: Record<string, any> = {
       store_name: data.name,
       custom_questions: approvedQueries,
@@ -74,8 +71,9 @@ Deno.serve(async (req) => {
       is_active: data.is_active ?? true,
       interval_minutes: data.interval_minutes ?? 5,
       remote_command: data.remote_command || "run",
+      debug_mode: data.debug_mode ?? false,
+    };
 
-    // Only expose camera_password to service role requests
     if (isServiceRole) {
       config.camera_password = data.camera_password || null;
     }

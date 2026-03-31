@@ -10,6 +10,7 @@ import { ComparativeChart } from "@/components/dashboard/ComparativeChart";
 import { WelcomeTutorial } from "@/components/dashboard/WelcomeTutorial";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { StatCardSkeleton, TableSkeleton } from "@/components/ui/carbon-skeleton";
 import { Button } from "@/components/ui/button";
@@ -233,12 +234,21 @@ export default function Dashboard() {
     ? Math.round(todayAudits.reduce((sum, a) => sum + (a.score || 0), 0) / todayAudits.length)
     : 0;
 
+  const handleDispute = async (auditId: string) => {
+    const { error } = await supabase.from("analytics_logs").update({ disputed: true }).eq("id", auditId);
+    if (error) { toast.error("خطأ في تسجيل الطعن"); return; }
+    toast.success("تم تسجيل الطعن — سيراجعها الفريق التقني");
+    setAudits((prev) => prev.map((a) => a.id === auditId ? { ...a, disputed: true } : a));
+  };
+
   const recentAudits = audits.slice(0, 5).map((a) => ({
+    id: a.id,
     storeName: storeNameMap[a.store_id] || a.summary || "متجر",
     time: new Date(a.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
     status: (a.status === "fail" ? "fail" : a.status === "warning" ? "warning" : "pass") as "pass" | "warning" | "fail",
     summary: a.result ? summarizeResult(a.result) : a.summary || "لا توجد تفاصيل",
     score: a.score || 0,
+    disputed: (a as any).disputed ?? false,
   }));
 
   return (
@@ -315,7 +325,7 @@ export default function Dashboard() {
                   بانتظار بيانات من محرك سبلت
                 </div>
               ) : (
-                recentAudits.map((audit, i) => <AuditLogItem key={i} {...audit} />)
+                recentAudits.map((audit, i) => <AuditLogItem key={i} {...audit} onDispute={handleDispute} />)
               )}
             </div>
           </motion.div>

@@ -16,7 +16,11 @@ export type Database = {
     Tables: {
       analytics_logs: {
         Row: {
+          ai_reasoning: string | null
+          client_environment: Json | null
+          confidence_score: number | null
           created_at: string
+          disputed: boolean | null
           id: string
           observations: Json | null
           result: Json | null
@@ -26,7 +30,11 @@ export type Database = {
           summary: string | null
         }
         Insert: {
+          ai_reasoning?: string | null
+          client_environment?: Json | null
+          confidence_score?: number | null
           created_at?: string
+          disputed?: boolean | null
           id?: string
           observations?: Json | null
           result?: Json | null
@@ -36,7 +44,11 @@ export type Database = {
           summary?: string | null
         }
         Update: {
+          ai_reasoning?: string | null
+          client_environment?: Json | null
+          confidence_score?: number | null
           created_at?: string
+          disputed?: boolean | null
           id?: string
           observations?: Json | null
           result?: Json | null
@@ -155,6 +167,7 @@ export type Database = {
           camera_username: string | null
           created_at: string
           custom_queries: Json | null
+          debug_mode: boolean | null
           hardware_choice: string | null
           id: string
           interval_minutes: number | null
@@ -172,6 +185,7 @@ export type Database = {
           camera_username?: string | null
           created_at?: string
           custom_queries?: Json | null
+          debug_mode?: boolean | null
           hardware_choice?: string | null
           id?: string
           interval_minutes?: number | null
@@ -189,6 +203,7 @@ export type Database = {
           camera_username?: string | null
           created_at?: string
           custom_queries?: Json | null
+          debug_mode?: boolean | null
           hardware_choice?: string | null
           id?: string
           interval_minutes?: number | null
@@ -273,6 +288,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "support_tickets_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      system_logs: {
+        Row: {
+          created_at: string
+          id: string
+          log_type: string
+          metadata: Json | null
+          raw_response: Json | null
+          store_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          log_type?: string
+          metadata?: Json | null
+          raw_response?: Json | null
+          store_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          log_type?: string
+          metadata?: Json | null
+          raw_response?: Json | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_logs_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"

@@ -35,6 +35,9 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const audits: any[] = Array.isArray(body) ? body : [body];
+    const isSyncing = body.is_syncing === true;
+    const syncTotal = body.sync_total || 0;
+    const syncBatch = body.sync_batch || 0;
 
     if (audits.length === 0) {
       return new Response(JSON.stringify({ error: "No audit data provided" }), {
@@ -52,7 +55,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Validate API key against store_api_keys table
     const { data: keyRow, error: keyError } = await supabase
       .from("store_api_keys")
       .select("store_id, is_active")
@@ -68,7 +70,6 @@ Deno.serve(async (req) => {
 
     const authorizedStoreId = keyRow.store_id;
 
-    // Ensure all audit entries match the authorized store
     const unauthorized = audits.some((a) => a.store_id && a.store_id !== authorizedStoreId);
     if (unauthorized) {
       return new Response(JSON.stringify({ error: "API key does not match store_id in payload" }), {
@@ -77,13 +78,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    // --- Rate Limiting ---
     if (!checkRateLimit(authorizedStoreId)) {
       return new Response(JSON.stringify({ error: "Rate limit exceeded. Max 20 requests/minute per store." }), {
         status: 429,
         headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
       });
     }
+
+    // Check if debug_mode is enabled for this store
+    const { data: storeData } = await supabase
+      .from("stores")
+      .select("debug_mode")
+      .eq("id", authorizedStoreId)
+      .single();
+
+    const debugMode = storeData?.debug_mode ?? false;
 
     // Validate and map each audit line
     const rows = audits.map((audit) => {
@@ -102,11 +111,13 @@ Deno.serve(async (req) => {
         status,
         summary: audit.summary || audit.store || null,
         observations: audit.observations || null,
+        ai_reasoning: audit.ai_reasoning || null,
+        confidence_score: typeof audit.confidence_score === "number" ? audit.confidence_score : null,
+        client_environment: audit.client_environment || null,
         created_at: audit.timestamp || new Date().toISOString(),
       };
     });
 
-    // Batch insert (max 50 per request)
     const batchRows = rows.slice(0, 50);
 
     const { data, error } = await supabase
@@ -122,6 +133,24 @@ Deno.serve(async (req) => {
       });
     }
 
+    // If debug_mode is ON, save raw AI response to system_logs
+    if (debugMode) {
+      const debugRows = audits.map((audit) => ({
+        store_id: authorizedStoreId,
+        log_type: "debug",
+        raw_response: audit.raw_ai_response || audit.result || null,
+        metadata: {
+          score: audit.score,
+          confidence: audit.confidence_score,
+          timestamp: audit.timestamp,
+          engine_version: audit.engine_version || "unknown",
+        },
+      }));
+
+      const { error: debugError } = await supabase.from("system_logs").insert(debugRows);
+      if (debugError) console.error("Debug log insert error:", debugError);
+    }
+
     // Auto-create security alerts for scores < 50
     const failedAudits = (data || []).filter((d: any) => d.score !== null && d.score < 50);
     if (failedAudits.length > 0) {
@@ -132,13 +161,27 @@ Deno.serve(async (req) => {
       }));
 
       const { error: alertError } = await supabase.from("security_alerts").insert(alertRows);
-      if (alertError) {
-        console.error("Alert insert error:", alertError);
-      }
+      if (alertError) console.error("Alert insert error:", alertError);
+    }
+
+    // Camera failure report
+    if (body.camera_failure) {
+      await supabase.from("security_alerts").insert({
+        store_id: authorizedStoreId,
+        alert_type: "camera_offline",
+        message: `تنبيه: كاميرا الفرع غير متصلة — ${body.camera_failure_reason || "سبب غير محدد"}`,
+      });
     }
 
     return new Response(
-      JSON.stringify({ success: true, inserted: data?.length || 0, alerts_created: failedAudits.length }),
+      JSON.stringify({
+        success: true,
+        inserted: data?.length || 0,
+        alerts_created: failedAudits.length,
+        debug_logged: debugMode,
+        is_syncing: isSyncing,
+        sync_progress: isSyncing ? { batch: syncBatch, total: syncTotal } : null,
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
