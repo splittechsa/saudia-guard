@@ -379,10 +379,17 @@ export default function AdminDashboard() {
                           <p className="text-[10px] text-muted-foreground font-mono">{store.id.slice(0, 8)}</p>
                         </div>
                         <div className="flex items-center gap-2">
+                          <Badge variant="outline" className={`text-[10px] ${
+                            store.store_status === "active" ? "text-emerald border-emerald/30" :
+                            store.store_status === "pending_review" ? "text-accent border-accent/30" :
+                            store.store_status === "suspended" ? "text-destructive border-destructive/30" :
+                            "text-muted-foreground border-border"
+                          }`}>
+                            {store.store_status === "active" ? "نشط" : store.store_status === "pending_review" ? "بانتظار IT" : store.store_status === "suspended" ? "معلّق" : "مسودة"}
+                          </Badge>
                           <Badge variant="outline" className={`text-[10px] ${store.hardware_choice ? "text-emerald border-emerald/30" : "text-accent border-accent/30"}`}>
                             {store.hardware_choice || "بدون جهاز"}
                           </Badge>
-                          <div className={`w-2 h-2 rounded-full ${store.is_active ? "bg-emerald" : "bg-destructive"}`} />
                         </div>
                       </div>
                     ))}
