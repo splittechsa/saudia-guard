@@ -325,7 +325,7 @@ export default function Dashboard() {
                   بانتظار بيانات من محرك سبلت
                 </div>
               ) : (
-                recentAudits.map((audit, i) => <AuditLogItem key={i} {...audit} />)
+                recentAudits.map((audit, i) => <AuditLogItem key={i} {...audit} onDispute={handleDispute} />)
               )}
             </div>
           </motion.div>
