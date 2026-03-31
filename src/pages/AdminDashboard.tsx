@@ -9,6 +9,9 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { StatCardSkeleton, TableSkeleton } from "@/components/ui/carbon-skeleton";
+import UserManagement from "@/components/admin/UserManagement";
+import TicketChat from "@/components/tickets/TicketChat";
+import { useAuth } from "@/hooks/useAuth";
 
 interface StoreRow {
   id: string;
@@ -58,24 +61,19 @@ interface LiveAudit {
   created_at: string;
 }
 
-interface ProfileRow {
-  id: string;
-  full_name: string | null;
-  email: string | null;
-}
-
 export default function AdminDashboard() {
+  const { user } = useAuth();
   const [stores, setStores] = useState<StoreRow[]>([]);
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [subs, setSubs] = useState<SubRow[]>([]);
   const [pendingSubs, setPendingSubs] = useState<SubRow[]>([]);
   const [liveAudits, setLiveAudits] = useState<LiveAudit[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, ProfileRow>>({});
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "surveillance" | "engines" | "queries" | "approvals" | "alerts" | "tickets">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "surveillance" | "engines" | "users" | "queries" | "approvals" | "alerts" | "tickets">("overview");
   const [apiKeys, setApiKeys] = useState<Record<string, { api_key: string; is_active: boolean }>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null);
 
   useEffect(() => {
     fetchAll();
@@ -105,7 +103,7 @@ export default function AdminDashboard() {
     const [storesRes, alertsRes, ticketsRes, subsRes, pendingSubsRes, auditsRes, apiKeysRes] = await Promise.all([
       supabase.from("stores").select("*").order("created_at", { ascending: false }),
       supabase.from("security_alerts").select("*").order("created_at", { ascending: false }).limit(20),
-      supabase.from("support_tickets").select("*").order("created_at", { ascending: false }).limit(20),
+      supabase.from("support_tickets").select("*").order("created_at", { ascending: false }).limit(50),
       supabase.from("subscriptions").select("*").eq("status", "active"),
       supabase.from("subscriptions").select("*").eq("status", "pending").order("created_at", { ascending: false }),
       supabase.from("analytics_logs").select("id, store_id, score, status, summary, created_at").order("created_at", { ascending: false }).limit(30),
@@ -136,7 +134,6 @@ export default function AdminDashboard() {
   const criticalAlerts = unresolvedAlerts.filter((a) => a.alert_type === "critical" || a.alert_type === "tampering");
   const storeNameMap = Object.fromEntries(stores.map((s) => [s.id, s.name]));
 
-  // Engine heartbeat: determine last audit time per store
   const storeLastAudit = liveAudits.reduce((acc, a) => {
     if (!acc[a.store_id] || new Date(a.created_at) > new Date(acc[a.store_id])) {
       acc[a.store_id] = a.created_at;
@@ -178,9 +175,7 @@ export default function AdminDashboard() {
 
   const handleSubscriptionApproval = async (subId: string, userId: string, approved: boolean) => {
     if (approved) {
-      // Activate subscription
       await supabase.from("subscriptions").update({ status: "active" }).eq("id", subId);
-      // Activate user's stores
       await supabase.from("stores").update({ is_active: true }).eq("user_id", userId);
       toast.success("✅ تم تفعيل الاشتراك والمتاجر");
     } else {
@@ -193,6 +188,7 @@ export default function AdminDashboard() {
   const handleTicketStatus = async (ticketId: string, status: string) => {
     await supabase.from("support_tickets").update({ status }).eq("id", ticketId);
     toast.success("تم تحديث حالة التذكرة");
+    setSelectedTicket(null);
     fetchAll();
   };
 
@@ -202,6 +198,7 @@ export default function AdminDashboard() {
     { id: "overview" as const, label: "نظرة عامة", icon: Shield },
     { id: "surveillance" as const, label: "عين الإدارة", icon: Eye },
     { id: "engines" as const, label: "المحركات", icon: Cpu },
+    { id: "users" as const, label: "المستخدمين", icon: Users },
     { id: "approvals" as const, label: `الطلبات (${pendingSubs.length})`, icon: UserPlus },
     { id: "queries" as const, label: "اعتمادات المتاجر", icon: CheckCircle },
     { id: "alerts" as const, label: `التنبيهات (${unresolvedAlerts.length})`, icon: AlertTriangle },
@@ -221,7 +218,6 @@ export default function AdminDashboard() {
           </div>
         </motion.div>
 
-        {/* Global Search */}
         <div className="relative">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
@@ -233,7 +229,6 @@ export default function AdminDashboard() {
           />
         </div>
 
-        {/* Pending subscriptions banner */}
         {pendingSubs.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-xl bg-accent/10 border border-accent/30 p-4 flex items-center gap-3">
             <UserPlus className="w-5 h-5 text-accent animate-pulse" />
@@ -294,7 +289,6 @@ export default function AdminDashboard() {
 
           return (
           <div className="space-y-6">
-            {/* Revenue Tracker */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-gradient-to-l from-accent/5 to-card border border-accent/20 p-6">
               <div className="flex items-center gap-3 mb-4">
                 <DollarSign className="w-5 h-5 text-accent" />
@@ -366,13 +360,12 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            {/* Search results for tickets */}
             {q && filteredTickets.length > 0 && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-xl bg-card border border-border p-5">
                 <h3 className="text-sm font-semibold text-foreground mb-3 font-arabic">نتائج البحث — التذاكر ({filteredTickets.length})</h3>
                 <div className="space-y-2">
                   {filteredTickets.map((t) => (
-                    <div key={t.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border">
+                    <div key={t.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border cursor-pointer hover:border-primary/30" onClick={() => setSelectedTicket(t)}>
                       <div>
                         <span className="text-sm font-semibold text-foreground font-arabic">{t.subject}</span>
                         <p className="text-[10px] text-muted-foreground font-mono">{t.id.slice(0, 8)}</p>
@@ -440,15 +433,13 @@ export default function AdminDashboard() {
           </motion.div>
         )}
 
-        {/* Engines Monitoring Tab */}
+        {/* Engines Tab */}
         {activeTab === "engines" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <div className="flex items-center gap-2 mb-2">
               <Cpu className="w-5 h-5 text-primary" />
               <h3 className="text-sm font-semibold text-foreground font-arabic">مراقبة المحركات — Heartbeat & API Keys</h3>
             </div>
-
-            {/* Stats row */}
             <div className="grid grid-cols-3 gap-3">
               <div className="rounded-xl bg-card border border-border p-4 text-center">
                 <Wifi className="w-5 h-5 text-emerald mx-auto mb-1" />
@@ -466,8 +457,6 @@ export default function AdminDashboard() {
                 <p className="text-[10px] text-muted-foreground font-arabic">غير متصل</p>
               </div>
             </div>
-
-            {/* Store engines list */}
             <div className="space-y-2">
               {stores.map((store) => {
                 const status = getEngineStatus(store.id);
@@ -526,7 +515,10 @@ export default function AdminDashboard() {
           </motion.div>
         )}
 
+        {/* Users Tab */}
+        {activeTab === "users" && <UserManagement />}
 
+        {/* Approvals Tab */}
         {activeTab === "approvals" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <div className="flex items-center gap-2 mb-2">
@@ -637,7 +629,7 @@ export default function AdminDashboard() {
         {activeTab === "tickets" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
             {tickets.map((ticket) => (
-              <div key={ticket.id} className="rounded-xl bg-card border border-border p-5">
+              <div key={ticket.id} className="rounded-xl bg-card border border-border p-5 cursor-pointer hover:border-primary/30 transition-all" onClick={() => setSelectedTicket(ticket)}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
@@ -653,26 +645,27 @@ export default function AdminDashboard() {
                     }`}>
                       {ticket.priority === "high" ? "عالية" : ticket.priority === "medium" ? "متوسطة" : "منخفضة"}
                     </Badge>
-                    <div className="flex gap-1">
-                      {ticket.status === "open" && (
-                        <>
-                          <Button size="sm" variant="outline" onClick={() => handleTicketStatus(ticket.id, "in_progress")} className="text-xs font-arabic h-7 px-2">جاري العمل</Button>
-                          <Button size="sm" variant="outline" onClick={() => handleTicketStatus(ticket.id, "resolved")} className="text-xs text-emerald font-arabic h-7 px-2">حل</Button>
-                        </>
-                      )}
-                      {ticket.status === "in_progress" && (
-                        <Button size="sm" variant="outline" onClick={() => handleTicketStatus(ticket.id, "resolved")} className="text-xs text-emerald font-arabic h-7 px-2">تم الحل</Button>
-                      )}
-                      {ticket.status === "resolved" && (
-                        <Badge variant="outline" className="text-[10px] text-emerald border-emerald/30">✓ تم الحل</Badge>
-                      )}
-                    </div>
+                    <Badge variant="outline" className={`text-[10px] ${
+                      ticket.status === "resolved" || ticket.status === "closed" ? "text-emerald border-emerald/30" : ticket.status === "in_progress" ? "text-accent border-accent/30" : "text-primary border-primary/30"
+                    }`}>
+                      {ticket.status === "resolved" ? "تم الحل" : ticket.status === "in_progress" ? "قيد المعالجة" : ticket.status === "closed" ? "مغلقة" : "مفتوحة"}
+                    </Badge>
                   </div>
                 </div>
               </div>
             ))}
             {tickets.length === 0 && <p className="text-center text-sm text-muted-foreground py-8 font-arabic">لا توجد تذاكر دعم</p>}
           </motion.div>
+        )}
+
+        {/* Ticket Chat Modal */}
+        {selectedTicket && (
+          <TicketChat
+            ticket={selectedTicket}
+            onClose={() => setSelectedTicket(null)}
+            onStatusChange={handleTicketStatus}
+            senderRole="super_owner"
+          />
         )}
       </div>
     </DashboardLayout>

@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Server, Activity, Wifi, WifiOff, Clock, Eye, Store, AlertTriangle } from "lucide-react";
+import { Server, Activity, Wifi, WifiOff, Clock, Eye, Store, AlertTriangle, MessageSquare, RefreshCw, Pause, Play, Settings } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 import { StatCardSkeleton, TableSkeleton } from "@/components/ui/carbon-skeleton";
+import TicketChat from "@/components/tickets/TicketChat";
 
 interface StoreHealth {
   id: string;
@@ -13,6 +17,7 @@ interface StoreHealth {
   is_active: boolean | null;
   hardware_choice: string | null;
   rtsp_url: string | null;
+  remote_command: string;
   last_audit_at: string | null;
   last_score: number | null;
   status: "online" | "warning" | "offline";
@@ -27,15 +32,28 @@ interface AuditLog {
   created_at: string;
 }
 
+interface TicketRow {
+  id: string;
+  subject: string;
+  description: string;
+  priority: string;
+  status: string;
+  user_id: string;
+  created_at: string;
+}
+
 export default function ITDashboard() {
+  const { user } = useAuth();
   const [storeHealths, setStoreHealths] = useState<StoreHealth[]>([]);
   const [recentLogs, setRecentLogs] = useState<AuditLog[]>([]);
+  const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [storeNames, setStoreNames] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState<"heartbeat" | "logs" | "tickets">("heartbeat");
+  const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null);
 
   useEffect(() => {
     fetchData();
-    // Realtime logs
     const channel = supabase
       .channel("it-audit-feed")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_logs" }, (payload) => {
@@ -46,9 +64,10 @@ export default function ITDashboard() {
   }, []);
 
   const fetchData = async () => {
-    const [storesRes, logsRes] = await Promise.all([
-      supabase.from("stores").select("id, name, is_active, hardware_choice, rtsp_url"),
+    const [storesRes, logsRes, ticketsRes] = await Promise.all([
+      supabase.from("stores").select("id, name, is_active, hardware_choice, rtsp_url, remote_command"),
       supabase.from("analytics_logs").select("*").order("created_at", { ascending: false }).limit(100),
+      supabase.from("support_tickets").select("*").order("created_at", { ascending: false }).limit(50),
     ]);
 
     const stores = storesRes.data || [];
@@ -57,8 +76,8 @@ export default function ITDashboard() {
     stores.forEach((s: any) => { names[s.id] = s.name; });
     setStoreNames(names);
     setRecentLogs(logs as AuditLog[]);
+    if (ticketsRes.data) setTickets(ticketsRes.data as TicketRow[]);
 
-    // Build health map
     const now = Date.now();
     const healthList: StoreHealth[] = stores.map((s: any) => {
       const storeLogs = logs.filter((l: any) => l.store_id === s.id);
@@ -74,6 +93,7 @@ export default function ITDashboard() {
         is_active: s.is_active,
         hardware_choice: s.hardware_choice,
         rtsp_url: s.rtsp_url,
+        remote_command: s.remote_command || "run",
         last_audit_at: lastAt,
         last_score: lastLog?.score ?? null,
         status,
@@ -83,12 +103,30 @@ export default function ITDashboard() {
     setLoading(false);
   };
 
+  const sendCommand = async (storeId: string, command: string) => {
+    const { error } = await supabase.from("stores").update({ remote_command: command } as any).eq("id", storeId);
+    if (error) {
+      toast.error("خطأ في إرسال الأمر");
+      return;
+    }
+    toast.success(`تم إرسال الأمر: ${command}`);
+    setStoreHealths((prev) => prev.map((s) => s.id === storeId ? { ...s, remote_command: command } : s));
+  };
+
+  const handleTicketStatus = async (ticketId: string, status: string) => {
+    await supabase.from("support_tickets").update({ status }).eq("id", ticketId);
+    toast.success("تم تحديث حالة التذكرة");
+    setSelectedTicket(null);
+    fetchData();
+  };
+
   const onlineCount = storeHealths.filter((s) => s.status === "online").length;
   const warningCount = storeHealths.filter((s) => s.status === "warning").length;
   const offlineCount = storeHealths.filter((s) => s.status === "offline").length;
   const avgScore = recentLogs.length
     ? Math.round(recentLogs.filter((l) => l.score !== null).reduce((a, l) => a + (l.score || 0), 0) / recentLogs.filter((l) => l.score !== null).length)
     : 0;
+  const openTickets = tickets.filter((t) => t.status === "open" || t.status === "in_progress").length;
 
   const statusIcon = (s: string) => {
     if (s === "online") return <Wifi className="w-4 h-4 text-emerald-400" />;
@@ -115,6 +153,12 @@ export default function ITDashboard() {
     );
   }
 
+  const tabs = [
+    { id: "heartbeat" as const, label: "نبضات المحركات", icon: Activity },
+    { id: "logs" as const, label: "سجلات التدقيق", icon: Eye },
+    { id: "tickets" as const, label: `التذاكر (${openTickets})`, icon: MessageSquare },
+  ];
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -124,115 +168,229 @@ export default function ITDashboard() {
             <Server className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground font-arabic">لوحة الدعم التقني</h1>
-            <p className="text-xs text-muted-foreground font-arabic">مراقبة صحة الأنظمة والمتاجر</p>
+            <h1 className="text-xl font-bold text-foreground font-arabic">مركز القيادة التقني</h1>
+            <p className="text-xs text-muted-foreground font-arabic">مراقبة المحركات · التحكم عن بُعد · الدعم الفني</p>
           </div>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <StatCard icon={Store} label="إجمالي المتاجر" value={String(storeHealths.length)} />
           <StatCard icon={Wifi} label="متصل" value={String(onlineCount)} glowColor="emerald" />
           <StatCard icon={AlertTriangle} label="تحذير / منقطع" value={`${warningCount} / ${offlineCount}`} />
           <StatCard icon={Activity} label="متوسط النقاط" value={`${avgScore}%`} />
+          <StatCard icon={MessageSquare} label="تذاكر مفتوحة" value={String(openTickets)} glowColor="blue" />
         </div>
 
-        {/* Heartbeat Monitor */}
-        <div className="glass-strong rounded-2xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Activity className="w-5 h-5 text-primary" />
-            <h2 className="text-base font-semibold text-foreground font-arabic">نبضات المتاجر (Heartbeat)</h2>
+        {/* Tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-arabic whitespace-nowrap transition-all ${
+                activeTab === tab.id ? "bg-primary text-primary-foreground" : "bg-card border border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <tab.icon className="w-3.5 h-3.5" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Heartbeat Tab */}
+        {activeTab === "heartbeat" && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Activity className="w-5 h-5 text-primary" />
+              <h2 className="text-base font-semibold text-foreground font-arabic">نبضات المتاجر + التحكم عن بُعد</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {storeHealths.map((store) => (
+                <motion.div
+                  key={store.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`glass rounded-xl p-4 border ${
+                    store.status === "offline"
+                      ? "border-red-500/30 red-pulse"
+                      : store.status === "warning"
+                      ? "border-yellow-500/30"
+                      : "border-border"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-semibold text-foreground font-arabic">{store.name}</span>
+                    {statusIcon(store.status)}
+                  </div>
+                  <div className="space-y-1 text-xs text-muted-foreground mb-3">
+                    <div className="flex justify-between">
+                      <span className="font-arabic">آخر نبضة:</span>
+                      <span className="font-mono">{timeSince(store.last_audit_at)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-arabic">آخر نتيجة:</span>
+                      <span className={`font-mono font-bold ${(store.last_score ?? 0) >= 80 ? "text-emerald-400" : (store.last_score ?? 0) >= 50 ? "text-yellow-400" : "text-red-400"}`}>
+                        {store.last_score !== null ? `${store.last_score}%` : "—"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-arabic">الجهاز:</span>
+                      <span className="font-mono">{store.hardware_choice || "—"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-arabic">RTSP:</span>
+                      <Badge variant={store.rtsp_url ? "default" : "destructive"} className="text-[10px] h-4">
+                        {store.rtsp_url ? "مُعد" : "غير مُعد"}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-arabic">الأمر الحالي:</span>
+                      <Badge variant="outline" className={`text-[10px] ${
+                        store.remote_command === "run" ? "text-emerald border-emerald/30" :
+                        store.remote_command === "shutdown" ? "text-destructive border-destructive/30" :
+                        "text-accent border-accent/30"
+                      }`}>
+                        {store.remote_command}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Remote Commands */}
+                  <div className="flex gap-1.5 border-t border-border pt-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => sendCommand(store.id, "restart")}
+                      className="flex-1 h-7 text-[10px] font-arabic gap-1 text-accent border-accent/30 hover:bg-accent/10"
+                    >
+                      <RefreshCw className="w-3 h-3" /> إعادة تشغيل
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => sendCommand(store.id, store.remote_command === "shutdown" ? "run" : "shutdown")}
+                      className={`flex-1 h-7 text-[10px] font-arabic gap-1 ${
+                        store.remote_command === "shutdown"
+                          ? "text-emerald border-emerald/30 hover:bg-emerald/10"
+                          : "text-destructive border-destructive/30 hover:bg-destructive/10"
+                      }`}
+                    >
+                      {store.remote_command === "shutdown" ? (
+                        <><Play className="w-3 h-3" /> تشغيل</>
+                      ) : (
+                        <><Pause className="w-3 h-3" /> إيقاف</>
+                      )}
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+              {storeHealths.length === 0 && (
+                <p className="text-sm text-muted-foreground col-span-full text-center py-8 font-arabic">لا توجد متاجر مسجلة بعد</p>
+              )}
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {storeHealths.map((store) => (
+        )}
+
+        {/* Logs Tab */}
+        {activeTab === "logs" && (
+          <div className="glass-strong rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Eye className="w-5 h-5 text-accent" />
+              <h2 className="text-base font-semibold text-foreground font-arabic">آخر عمليات التدقيق</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="text-right py-2 px-3 font-arabic">المتجر</th>
+                    <th className="text-right py-2 px-3 font-arabic">النتيجة</th>
+                    <th className="text-right py-2 px-3 font-arabic">الحالة</th>
+                    <th className="text-right py-2 px-3 font-arabic">الملخص</th>
+                    <th className="text-right py-2 px-3 font-arabic">التوقيت</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentLogs.slice(0, 20).map((log) => (
+                    <motion.tr key={log.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border-b border-border/50 hover:bg-secondary/50 transition-colors">
+                      <td className="py-2 px-3 font-arabic">{storeNames[log.store_id] || log.store_id.slice(0, 8)}</td>
+                      <td className="py-2 px-3">
+                        <span className={`font-mono font-bold ${(log.score ?? 0) >= 80 ? "text-emerald-400" : (log.score ?? 0) >= 50 ? "text-yellow-400" : "text-red-400"}`}>
+                          {log.score !== null ? `${log.score}%` : "—"}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3">
+                        <Badge variant={log.status === "pass" ? "default" : "destructive"} className="text-[10px]">
+                          {log.status === "pass" ? "ناجح" : "فشل"}
+                        </Badge>
+                      </td>
+                      <td className="py-2 px-3 text-muted-foreground max-w-[200px] truncate font-arabic">{log.summary || "—"}</td>
+                      <td className="py-2 px-3 font-mono text-xs text-muted-foreground">{timeSince(log.created_at)}</td>
+                    </motion.tr>
+                  ))}
+                  {recentLogs.length === 0 && (
+                    <tr><td colSpan={5} className="text-center py-8 text-muted-foreground font-arabic">لا توجد سجلات تدقيق</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Tickets Tab */}
+        {activeTab === "tickets" && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquare className="w-5 h-5 text-primary" />
+              <h2 className="text-base font-semibold text-foreground font-arabic">تذاكر الدعم الفني</h2>
+            </div>
+            {tickets.map((ticket) => (
               <motion.div
-                key={store.id}
-                initial={{ opacity: 0, y: 10 }}
+                key={ticket.id}
+                initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`glass rounded-xl p-4 border ${
-                  store.status === "offline"
-                    ? "border-red-500/30 red-pulse"
-                    : store.status === "warning"
-                    ? "border-yellow-500/30"
-                    : "border-border"
-                }`}
+                onClick={() => setSelectedTicket(ticket)}
+                className="rounded-xl bg-card border border-border p-4 cursor-pointer hover:border-primary/30 transition-all"
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-foreground font-arabic">{store.name}</span>
-                  {statusIcon(store.status)}
-                </div>
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  <div className="flex justify-between">
-                    <span className="font-arabic">آخر نبضة:</span>
-                    <span className="font-mono">{timeSince(store.last_audit_at)}</span>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <MessageSquare className="w-3.5 h-3.5 text-primary" />
+                      <h4 className="text-sm font-bold text-foreground font-arabic">{ticket.subject}</h4>
+                    </div>
+                    <p className="text-xs text-muted-foreground font-arabic line-clamp-1">{ticket.description}</p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-1 font-mono">{new Date(ticket.created_at).toLocaleString("ar-SA")}</p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-arabic">آخر نتيجة:</span>
-                    <span className={`font-mono font-bold ${(store.last_score ?? 0) >= 80 ? "text-emerald-400" : (store.last_score ?? 0) >= 50 ? "text-yellow-400" : "text-red-400"}`}>
-                      {store.last_score !== null ? `${store.last_score}%` : "—"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-arabic">الجهاز:</span>
-                    <span className="font-mono">{store.hardware_choice || "—"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-arabic">RTSP:</span>
-                    <Badge variant={store.rtsp_url ? "default" : "destructive"} className="text-[10px] h-4">
-                      {store.rtsp_url ? "مُعد" : "غير مُعد"}
+                  <div className="flex flex-col gap-1.5 items-end">
+                    <Badge variant="outline" className={`text-[10px] ${
+                      ticket.priority === "high" ? "text-destructive border-destructive/30" : ticket.priority === "medium" ? "text-accent border-accent/30" : "text-emerald border-emerald/30"
+                    }`}>
+                      {ticket.priority === "high" ? "عالية" : ticket.priority === "medium" ? "متوسطة" : "منخفضة"}
+                    </Badge>
+                    <Badge variant="outline" className={`text-[10px] ${
+                      ticket.status === "resolved" || ticket.status === "closed" ? "text-emerald border-emerald/30" : "text-primary border-primary/30"
+                    }`}>
+                      {ticket.status === "resolved" ? "تم الحل" : ticket.status === "in_progress" ? "قيد المعالجة" : "مفتوحة"}
                     </Badge>
                   </div>
                 </div>
               </motion.div>
             ))}
-            {storeHealths.length === 0 && (
-              <p className="text-sm text-muted-foreground col-span-full text-center py-8 font-arabic">لا توجد متاجر مسجلة بعد</p>
+            {tickets.length === 0 && (
+              <p className="text-center text-sm text-muted-foreground py-8 font-arabic">لا توجد تذاكر</p>
             )}
           </div>
-        </div>
+        )}
 
-        {/* Recent Audit Logs */}
-        <div className="glass-strong rounded-2xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Eye className="w-5 h-5 text-accent" />
-            <h2 className="text-base font-semibold text-foreground font-arabic">آخر عمليات التدقيق</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-muted-foreground">
-                  <th className="text-right py-2 px-3 font-arabic">المتجر</th>
-                  <th className="text-right py-2 px-3 font-arabic">النتيجة</th>
-                  <th className="text-right py-2 px-3 font-arabic">الحالة</th>
-                  <th className="text-right py-2 px-3 font-arabic">الملخص</th>
-                  <th className="text-right py-2 px-3 font-arabic">التوقيت</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentLogs.slice(0, 20).map((log) => (
-                  <motion.tr key={log.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border-b border-border/50 hover:bg-secondary/50 transition-colors">
-                    <td className="py-2 px-3 font-arabic">{storeNames[log.store_id] || log.store_id.slice(0, 8)}</td>
-                    <td className="py-2 px-3">
-                      <span className={`font-mono font-bold ${(log.score ?? 0) >= 80 ? "text-emerald-400" : (log.score ?? 0) >= 50 ? "text-yellow-400" : "text-red-400"}`}>
-                        {log.score !== null ? `${log.score}%` : "—"}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3">
-                      <Badge variant={log.status === "pass" ? "default" : "destructive"} className="text-[10px]">
-                        {log.status === "pass" ? "ناجح" : "فشل"}
-                      </Badge>
-                    </td>
-                    <td className="py-2 px-3 text-muted-foreground max-w-[200px] truncate font-arabic">{log.summary || "—"}</td>
-                    <td className="py-2 px-3 font-mono text-xs text-muted-foreground">{timeSince(log.created_at)}</td>
-                  </motion.tr>
-                ))}
-                {recentLogs.length === 0 && (
-                  <tr><td colSpan={5} className="text-center py-8 text-muted-foreground font-arabic">لا توجد سجلات تدقيق</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        {/* Ticket Chat Modal */}
+        {selectedTicket && (
+          <TicketChat
+            ticket={selectedTicket}
+            onClose={() => setSelectedTicket(null)}
+            onStatusChange={handleTicketStatus}
+            senderRole="it_support"
+          />
+        )}
       </div>
     </DashboardLayout>
   );
