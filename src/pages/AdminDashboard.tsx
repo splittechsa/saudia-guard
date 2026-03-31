@@ -233,6 +233,7 @@ export default function AdminDashboard() {
     { id: "surveillance" as const, label: "عين الإدارة", icon: Eye },
     { id: "engines" as const, label: "المحركات", icon: Cpu },
     { id: "users" as const, label: "المستخدمين", icon: Users },
+    { id: "broadcast" as const, label: "مركز البث", icon: Megaphone },
     { id: "approvals" as const, label: `الطلبات (${pendingSubs.length})`, icon: UserPlus },
     { id: "queries" as const, label: "اعتمادات المتاجر", icon: CheckCircle },
     { id: "alerts" as const, label: `التنبيهات (${unresolvedAlerts.length})`, icon: AlertTriangle },
