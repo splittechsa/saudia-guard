@@ -13,7 +13,13 @@ export default function ProtectedRoute({ children, requiredRole }: { children: R
   }
 
   if (!user) return <Navigate to="/login" replace />;
-  if (requiredRole && !hasRole(requiredRole as any)) return <Navigate to="/dashboard" replace />;
+
+  if (requiredRole && !hasRole(requiredRole as any)) {
+    // Redirect to appropriate dashboard based on role
+    if (hasRole("super_owner")) return <Navigate to="/admin" replace />;
+    if (hasRole("it_support")) return <Navigate to="/it-dashboard" replace />;
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return <>{children}</>;
 }
