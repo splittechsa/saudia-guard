@@ -54,6 +54,7 @@ export default function TicketChat({ ticket, onClose, onStatusChange, senderRole
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMsg, setNewMsg] = useState("");
   const [sending, setSending] = useState(false);
+  const [aiThinking, setAiThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isResolved = ticket.status === "resolved" || ticket.status === "closed";
 
