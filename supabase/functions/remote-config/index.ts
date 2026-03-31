@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       camera_username: data.camera_username || null,
       is_active: data.is_active ?? true,
       interval_minutes: data.interval_minutes ?? 5,
-    };
+      remote_command: data.remote_command || "run",
 
     // Only expose camera_password to service role requests
     if (isServiceRole) {
