@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, DollarSign, Server, AlertTriangle, Shield, CheckCircle, XCircle, Clock, Eye, MessageSquare } from "lucide-react";
+import { Users, DollarSign, Server, AlertTriangle, Shield, CheckCircle, XCircle, Clock, Eye, MessageSquare, UserPlus } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -42,9 +42,11 @@ interface TicketRow {
 
 interface SubRow {
   id: string;
+  user_id: string;
   tier: string;
   price_sar: number;
   status: string;
+  created_at: string;
 }
 
 interface LiveAudit {
@@ -56,14 +58,22 @@ interface LiveAudit {
   created_at: string;
 }
 
+interface ProfileRow {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+}
+
 export default function AdminDashboard() {
   const [stores, setStores] = useState<StoreRow[]>([]);
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [subs, setSubs] = useState<SubRow[]>([]);
+  const [pendingSubs, setPendingSubs] = useState<SubRow[]>([]);
   const [liveAudits, setLiveAudits] = useState<LiveAudit[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, ProfileRow>>({});
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "surveillance" | "queries" | "alerts" | "tickets">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "surveillance" | "queries" | "approvals" | "alerts" | "tickets">("overview");
 
   useEffect(() => {
     fetchAll();
@@ -77,23 +87,32 @@ export default function AdminDashboard() {
         const newAudit = payload.new as LiveAudit;
         setLiveAudits((prev) => [newAudit, ...prev].slice(0, 30));
       })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "subscriptions" }, (payload) => {
+        const newSub = payload.new as SubRow;
+        if (newSub.status === "pending") {
+          setPendingSubs((prev) => [newSub, ...prev]);
+          toast.info("📋 طلب اشتراك جديد!", { description: `باقة ${newSub.tier}` });
+        }
+      })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
 
   const fetchAll = async () => {
     setLoading(true);
-    const [storesRes, alertsRes, ticketsRes, subsRes, auditsRes] = await Promise.all([
+    const [storesRes, alertsRes, ticketsRes, subsRes, pendingSubsRes, auditsRes] = await Promise.all([
       supabase.from("stores").select("*").order("created_at", { ascending: false }),
       supabase.from("security_alerts").select("*").order("created_at", { ascending: false }).limit(20),
       supabase.from("support_tickets").select("*").order("created_at", { ascending: false }).limit(20),
       supabase.from("subscriptions").select("*").eq("status", "active"),
+      supabase.from("subscriptions").select("*").eq("status", "pending").order("created_at", { ascending: false }),
       supabase.from("analytics_logs").select("id, store_id, score, status, summary, created_at").order("created_at", { ascending: false }).limit(30),
     ]);
     if (storesRes.data) setStores(storesRes.data as any[]);
     if (alertsRes.data) setAlerts(alertsRes.data as AlertRow[]);
     if (ticketsRes.data) setTickets(ticketsRes.data as TicketRow[]);
     if (subsRes.data) setSubs(subsRes.data as SubRow[]);
+    if (pendingSubsRes.data) setPendingSubs(pendingSubsRes.data as SubRow[]);
     if (auditsRes.data) setLiveAudits(auditsRes.data as LiveAudit[]);
     setLoading(false);
   };
@@ -115,15 +134,32 @@ export default function AdminDashboard() {
     fetchAll();
   };
 
+  const handleSubscriptionApproval = async (subId: string, userId: string, approved: boolean) => {
+    if (approved) {
+      // Activate subscription
+      await supabase.from("subscriptions").update({ status: "active" }).eq("id", subId);
+      // Activate user's stores
+      await supabase.from("stores").update({ is_active: true }).eq("user_id", userId);
+      toast.success("✅ تم تفعيل الاشتراك والمتاجر");
+    } else {
+      await supabase.from("subscriptions").update({ status: "rejected" }).eq("id", subId);
+      toast.success("تم رفض طلب الاشتراك");
+    }
+    fetchAll();
+  };
+
   const handleTicketStatus = async (ticketId: string, status: string) => {
     await supabase.from("support_tickets").update({ status }).eq("id", ticketId);
     toast.success("تم تحديث حالة التذكرة");
     fetchAll();
   };
 
+  const tierNameAr = (tier: string) => tier === "basic" ? "أساسي" : tier === "pro" ? "احترافي" : "مؤسسي";
+
   const tabs = [
     { id: "overview" as const, label: "نظرة عامة", icon: Shield },
     { id: "surveillance" as const, label: "عين الإدارة", icon: Eye },
+    { id: "approvals" as const, label: `الطلبات (${pendingSubs.length})`, icon: UserPlus },
     { id: "queries" as const, label: "اعتمادات المتاجر", icon: CheckCircle },
     { id: "alerts" as const, label: `التنبيهات (${unresolvedAlerts.length})`, icon: AlertTriangle },
     { id: "tickets" as const, label: `التذاكر (${tickets.filter(t => t.status === "open").length})`, icon: MessageSquare },
@@ -141,6 +177,20 @@ export default function AdminDashboard() {
             <p className="text-xs text-muted-foreground font-mono">splittechsa · صلاحيات كاملة</p>
           </div>
         </motion.div>
+
+        {/* Pending subscriptions banner */}
+        {pendingSubs.length > 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-xl bg-accent/10 border border-accent/30 p-4 flex items-center gap-3">
+            <UserPlus className="w-5 h-5 text-accent animate-pulse" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-accent font-arabic">📋 {pendingSubs.length} طلب اشتراك جديد بانتظار الموافقة</p>
+              <p className="text-xs text-accent/80 font-arabic">انتقل لتبويب "الطلبات" للمراجعة والتفعيل</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setActiveTab("approvals")} className="text-accent border-accent/30 hover:bg-accent/10 font-arabic text-xs">
+              مراجعة الطلبات
+            </Button>
+          </motion.div>
+        )}
 
         {criticalAlerts.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-xl bg-destructive/10 border border-destructive/30 p-4 flex items-center gap-3">
@@ -230,7 +280,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* 👁️ Surveillance Tab — عين الإدارة */}
+        {/* Surveillance Tab */}
         {activeTab === "surveillance" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <div className="flex items-center gap-2 mb-2">
@@ -283,7 +333,50 @@ export default function AdminDashboard() {
           </motion.div>
         )}
 
-        {/* Queries Tab — اعتمادات المتاجر */}
+        {/* Approvals Tab — طلبات الاشتراك */}
+        {activeTab === "approvals" && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <UserPlus className="w-5 h-5 text-accent" />
+              <h3 className="text-sm font-semibold text-foreground font-arabic">طلبات الاشتراك المعلقة</h3>
+            </div>
+            {pendingSubs.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground text-sm font-arabic">
+                <CheckCircle className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                لا توجد طلبات معلقة — جميع الاشتراكات مفعّلة
+              </div>
+            ) : (
+              pendingSubs.map((sub) => (
+                <motion.div key={sub.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-card border border-accent/20 p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <UserPlus className="w-4 h-4 text-accent" />
+                        <span className="text-sm font-bold text-foreground font-arabic">طلب اشتراك جديد</span>
+                        <Badge variant="outline" className="text-[10px] text-accent border-accent/30">{tierNameAr(sub.tier)}</Badge>
+                      </div>
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <p className="font-mono">User ID: {sub.user_id.slice(0, 12)}...</p>
+                        <p className="font-arabic">السعر: <span className="text-foreground font-bold">{sub.price_sar} ر.س/شهرياً</span></p>
+                        <p className="font-mono text-[10px]">{new Date(sub.created_at).toLocaleString("ar-SA")}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => handleSubscriptionApproval(sub.id, sub.user_id, true)} className="bg-emerald/10 text-emerald hover:bg-emerald/20 border border-emerald/30 font-arabic text-xs">
+                        <CheckCircle className="w-3 h-3 me-1" /> تفعيل
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleSubscriptionApproval(sub.id, sub.user_id, false)} className="text-destructive border-destructive/30 hover:bg-destructive/10 font-arabic text-xs">
+                        <XCircle className="w-3 h-3 me-1" /> رفض
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            )}
+          </motion.div>
+        )}
+
+        {/* Queries Tab */}
         {activeTab === "queries" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
             <p className="text-sm text-muted-foreground font-arabic">مراجعة والموافقة على استعلامات التدقيق المخصصة — فقط المعتمدة تظهر في الـ remote-config</p>
