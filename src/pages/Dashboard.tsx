@@ -77,6 +77,12 @@ export default function Dashboard() {
 
       setDashState("active");
 
+      // Show welcome tutorial on first activation
+      const tutorialKey = `split_welcome_${user.id}`;
+      if (!localStorage.getItem(tutorialKey)) {
+        setShowWelcome(true);
+        localStorage.setItem(tutorialKey, "1");
+      }
       const needsSetup = storesData.find((s) => !s.hardware_choice);
       if (needsSetup) setPendingSetupStore(needsSetup);
 
