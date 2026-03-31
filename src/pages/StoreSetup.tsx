@@ -258,6 +258,9 @@ export default function StoreSetup() {
                   </div>
                 </div>
 
+                {/* Camera Guide */}
+                <CameraGuide storeId={selectedStore.id} />
+
                 {/* Connection Status */}
                 <div className="rounded-xl bg-card border border-border p-5">
                   <div className="flex items-center gap-2 mb-3">
