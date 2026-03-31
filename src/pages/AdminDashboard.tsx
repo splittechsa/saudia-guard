@@ -201,6 +201,7 @@ export default function AdminDashboard() {
   const tabs = [
     { id: "overview" as const, label: "نظرة عامة", icon: Shield },
     { id: "surveillance" as const, label: "عين الإدارة", icon: Eye },
+    { id: "engines" as const, label: "المحركات", icon: Cpu },
     { id: "approvals" as const, label: `الطلبات (${pendingSubs.length})`, icon: UserPlus },
     { id: "queries" as const, label: "اعتمادات المتاجر", icon: CheckCircle },
     { id: "alerts" as const, label: `التنبيهات (${unresolvedAlerts.length})`, icon: AlertTriangle },
