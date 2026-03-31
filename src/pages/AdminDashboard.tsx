@@ -102,7 +102,7 @@ export default function AdminDashboard() {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [storesRes, alertsRes, ticketsRes, subsRes, pendingSubsRes, auditsRes] = await Promise.all([
+    const [storesRes, alertsRes, ticketsRes, subsRes, pendingSubsRes, auditsRes, apiKeysRes] = await Promise.all([
       supabase.from("stores").select("*").order("created_at", { ascending: false }),
       supabase.from("security_alerts").select("*").order("created_at", { ascending: false }).limit(20),
       supabase.from("support_tickets").select("*").order("created_at", { ascending: false }).limit(20),
@@ -112,12 +112,16 @@ export default function AdminDashboard() {
       supabase.from("store_api_keys").select("store_id, api_key, is_active"),
     ]);
     if (storesRes.data) setStores(storesRes.data as any[]);
-    const keysRes = await Promise.resolve(arguments[0] || null); // handled below
     if (alertsRes.data) setAlerts(alertsRes.data as AlertRow[]);
     if (ticketsRes.data) setTickets(ticketsRes.data as TicketRow[]);
     if (subsRes.data) setSubs(subsRes.data as SubRow[]);
     if (pendingSubsRes.data) setPendingSubs(pendingSubsRes.data as SubRow[]);
     if (auditsRes.data) setLiveAudits(auditsRes.data as LiveAudit[]);
+    if (apiKeysRes.data) {
+      const keysMap: Record<string, { api_key: string; is_active: boolean }> = {};
+      (apiKeysRes.data as any[]).forEach((k: any) => { keysMap[k.store_id] = { api_key: k.api_key, is_active: k.is_active }; });
+      setApiKeys(keysMap);
+    }
     setLoading(false);
   };
 
