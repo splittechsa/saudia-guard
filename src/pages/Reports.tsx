@@ -208,6 +208,27 @@ export default function Reports() {
     doc.save(`split-report-${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
+  if (!hasActiveSubscription && !loading) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-strong rounded-2xl p-10 text-center max-w-md">
+            <div className="w-16 h-16 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mx-auto mb-5">
+              <BarChart3 className="w-8 h-8 text-accent" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-3 font-arabic">التقارير غير متاحة</h2>
+            <p className="text-sm text-muted-foreground mb-5 font-arabic">
+              يجب أن يكون لديك اشتراك فعّال للوصول إلى التقارير والتحليلات. يرجى إكمال عملية الاشتراك أولاً.
+            </p>
+            <Button onClick={() => window.location.href = "/onboarding"} className="font-arabic">
+              اشترك الآن
+            </Button>
+          </motion.div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
