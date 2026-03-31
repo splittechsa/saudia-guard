@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, DollarSign, Server, AlertTriangle, Shield, CheckCircle, XCircle, Clock, Eye, MessageSquare, UserPlus, Search, Cpu, Wifi, WifiOff, Key, Copy } from "lucide-react";
+import { Users, DollarSign, Server, AlertTriangle, Shield, CheckCircle, XCircle, Clock, Eye, MessageSquare, UserPlus, Search, Cpu, Wifi, WifiOff, Key, Copy, Activity, Store } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
