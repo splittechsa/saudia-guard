@@ -69,7 +69,7 @@ export default function Dashboard() {
     if (!user) return;
     const fetchData = async () => {
       const [storesRes, subsRes, auditsRes] = await Promise.all([
-        supabase.from("stores").select("id, name, hardware_choice, is_active").eq("user_id", user.id),
+        supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status").eq("user_id", user.id),
         supabase.from("subscriptions").select("id, tier, status, price_sar").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1),
         supabase.from("analytics_logs").select("*").order("created_at", { ascending: false }).limit(50),
       ]);
