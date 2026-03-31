@@ -293,6 +293,20 @@ export default function Dashboard() {
 
         <ComparativeChart audits={audits} />
 
+        {/* Operating Hours Scheduler */}
+        {stores.length > 0 && subscription && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {stores.map((s) => (
+              <OperatingHoursScheduler
+                key={s.id}
+                storeId={s.id}
+                operatingHours={(s as any).operating_hours}
+                subscriptionTier={subscription.tier}
+              />
+            ))}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="lg:col-span-3 rounded-xl bg-card border border-border p-5">
             <div className="flex items-center justify-between mb-4">
