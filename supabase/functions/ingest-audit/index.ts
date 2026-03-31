@@ -2,8 +2,25 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key",
 };
+
+// Simple in-memory rate limiter per store (max 20 requests per minute)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 20;
+const RATE_WINDOW_MS = 60_000;
+
+function checkRateLimit(storeId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(storeId);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(storeId, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT) return false;
+  entry.count++;
+  return true;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -26,12 +43,50 @@ Deno.serve(async (req) => {
       });
     }
 
+    // --- API Key Authentication ---
+    const apiKeyHeader = req.headers.get("x-api-key");
+    if (!apiKeyHeader) {
+      return new Response(JSON.stringify({ error: "Missing x-api-key header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate API key against store_api_keys table
+    const { data: keyRow, error: keyError } = await supabase
+      .from("store_api_keys")
+      .select("store_id, is_active")
+      .eq("api_key", apiKeyHeader)
+      .single();
+
+    if (keyError || !keyRow || !keyRow.is_active) {
+      return new Response(JSON.stringify({ error: "Invalid or inactive API key" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const authorizedStoreId = keyRow.store_id;
+
+    // Ensure all audit entries match the authorized store
+    const unauthorized = audits.some((a) => a.store_id && a.store_id !== authorizedStoreId);
+    if (unauthorized) {
+      return new Response(JSON.stringify({ error: "API key does not match store_id in payload" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- Rate Limiting ---
+    if (!checkRateLimit(authorizedStoreId)) {
+      return new Response(JSON.stringify({ error: "Rate limit exceeded. Max 20 requests/minute per store." }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
+      });
+    }
+
     // Validate and map each audit line
     const rows = audits.map((audit) => {
-      if (!audit.store_id) {
-        throw new Error("Missing store_id in audit entry");
-      }
-
       const score = typeof audit.score === "number" ? audit.score : null;
       let status = audit.status || "pass";
       if (score !== null) {
@@ -41,18 +96,22 @@ Deno.serve(async (req) => {
       }
 
       return {
-        store_id: audit.store_id,
+        store_id: authorizedStoreId,
         result: audit.results || audit.result || null,
         score,
         status,
         summary: audit.summary || audit.store || null,
+        observations: audit.observations || null,
         created_at: audit.timestamp || new Date().toISOString(),
       };
     });
 
+    // Batch insert (max 50 per request)
+    const batchRows = rows.slice(0, 50);
+
     const { data, error } = await supabase
       .from("analytics_logs")
-      .insert(rows)
+      .insert(batchRows)
       .select("id, store_id, score, status");
 
     if (error) {

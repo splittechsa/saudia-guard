@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
 
     const { data, error } = await supabase
       .from("stores")
-      .select("id, name, custom_queries, query_status, operating_hours, hardware_choice, rtsp_url, camera_username, camera_password")
+      .select("id, name, custom_queries, query_status, operating_hours, hardware_choice, rtsp_url, camera_username, camera_password, is_active, interval_minutes")
       .eq("id", storeId)
       .single();
 
@@ -52,16 +52,13 @@ Deno.serve(async (req) => {
     }
 
     // Filter custom_queries: only return items with status "approved"
-    // Support both array-of-objects (with per-query status) and legacy string arrays
     let approvedQueries: any[] = [];
     const queries = data.custom_queries || [];
     
     if (Array.isArray(queries)) {
       if (queries.length > 0 && typeof queries[0] === "object" && queries[0] !== null) {
-        // Per-query approval: each query object has its own status
         approvedQueries = queries.filter((q: any) => q.status === "approved");
       } else {
-        // Legacy: simple string array — use store-level query_status
         approvedQueries = data.query_status === "approved" ? queries : [];
       }
     }
@@ -74,6 +71,8 @@ Deno.serve(async (req) => {
       hardware_choice: data.hardware_choice,
       rtsp_url: data.rtsp_url || null,
       camera_username: data.camera_username || null,
+      is_active: data.is_active ?? true,
+      interval_minutes: data.interval_minutes ?? 5,
     };
 
     // Only expose camera_password to service role requests
