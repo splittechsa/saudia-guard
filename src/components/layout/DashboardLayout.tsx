@@ -3,9 +3,10 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Store, BarChart3, Shield, Settings, LogOut,
-  Bell, ChevronLeft, ChevronRight, Zap, Users, HelpCircle, Activity, MessageSquare, Camera
+  Bell, ChevronLeft, ChevronRight, Zap, Users, HelpCircle, Activity, MessageSquare, Camera, Server
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { ConnectionPulse } from "@/components/ui/connection-pulse";
 
 const navItems = [
   { icon: LayoutDashboard, label: "نظرة عامة", path: "/dashboard" },
