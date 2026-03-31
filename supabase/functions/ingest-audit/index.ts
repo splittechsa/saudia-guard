@@ -17,8 +17,6 @@ Deno.serve(async (req) => {
     );
 
     const body = await req.json();
-
-    // Support single audit or bulk JSONL array
     const audits: any[] = Array.isArray(body) ? body : [body];
 
     if (audits.length === 0) {
@@ -34,7 +32,6 @@ Deno.serve(async (req) => {
         throw new Error("Missing store_id in audit entry");
       }
 
-      // Determine status from score
       const score = typeof audit.score === "number" ? audit.score : null;
       let status = audit.status || "pass";
       if (score !== null) {
@@ -56,7 +53,7 @@ Deno.serve(async (req) => {
     const { data, error } = await supabase
       .from("analytics_logs")
       .insert(rows)
-      .select("id");
+      .select("id, store_id, score, status");
 
     if (error) {
       console.error("Insert error:", error);
@@ -66,8 +63,23 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Auto-create security alerts for scores < 50
+    const failedAudits = (data || []).filter((d: any) => d.score !== null && d.score < 50);
+    if (failedAudits.length > 0) {
+      const alertRows = failedAudits.map((audit: any) => ({
+        store_id: audit.store_id,
+        alert_type: audit.score < 30 ? "critical" : "warning",
+        message: `تنبيه تلقائي: نتيجة التدقيق ${audit.score}% — أقل من الحد المسموح (50%)`,
+      }));
+
+      const { error: alertError } = await supabase.from("security_alerts").insert(alertRows);
+      if (alertError) {
+        console.error("Alert insert error:", alertError);
+      }
+    }
+
     return new Response(
-      JSON.stringify({ success: true, inserted: data?.length || 0 }),
+      JSON.stringify({ success: true, inserted: data?.length || 0, alerts_created: failedAudits.length }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

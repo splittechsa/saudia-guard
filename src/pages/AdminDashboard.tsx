@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, DollarSign, Server, AlertTriangle, Shield, Activity, CheckCircle, XCircle, Clock, Eye, MessageSquare } from "lucide-react";
+import { Users, DollarSign, Server, AlertTriangle, Shield, CheckCircle, XCircle, Clock, Eye, MessageSquare } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { StatCardSkeleton, TableSkeleton } from "@/components/ui/carbon-skeleton";
 
 interface StoreRow {
   id: string;
@@ -46,37 +47,55 @@ interface SubRow {
   status: string;
 }
 
+interface LiveAudit {
+  id: string;
+  store_id: string;
+  score: number | null;
+  status: string | null;
+  summary: string | null;
+  created_at: string;
+}
+
 export default function AdminDashboard() {
   const [stores, setStores] = useState<StoreRow[]>([]);
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [subs, setSubs] = useState<SubRow[]>([]);
-  const [activeTab, setActiveTab] = useState<"overview" | "queries" | "alerts" | "tickets">("overview");
+  const [liveAudits, setLiveAudits] = useState<LiveAudit[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"overview" | "surveillance" | "queries" | "alerts" | "tickets">("overview");
 
   useEffect(() => {
     fetchAll();
-    // Realtime for security alerts
     const ch = supabase
-      .channel("admin-alerts")
+      .channel("admin-live")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "security_alerts" }, (payload) => {
         setAlerts((prev) => [payload.new as AlertRow, ...prev]);
         toast.error("🚨 تنبيه أمني جديد!", { description: (payload.new as AlertRow).message });
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_logs" }, (payload) => {
+        const newAudit = payload.new as LiveAudit;
+        setLiveAudits((prev) => [newAudit, ...prev].slice(0, 30));
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
 
   const fetchAll = async () => {
-    const [storesRes, alertsRes, ticketsRes, subsRes] = await Promise.all([
+    setLoading(true);
+    const [storesRes, alertsRes, ticketsRes, subsRes, auditsRes] = await Promise.all([
       supabase.from("stores").select("*").order("created_at", { ascending: false }),
       supabase.from("security_alerts").select("*").order("created_at", { ascending: false }).limit(20),
       supabase.from("support_tickets").select("*").order("created_at", { ascending: false }).limit(20),
       supabase.from("subscriptions").select("*").eq("status", "active"),
+      supabase.from("analytics_logs").select("id, store_id, score, status, summary, created_at").order("created_at", { ascending: false }).limit(30),
     ]);
     if (storesRes.data) setStores(storesRes.data as any[]);
     if (alertsRes.data) setAlerts(alertsRes.data as AlertRow[]);
     if (ticketsRes.data) setTickets(ticketsRes.data as TicketRow[]);
     if (subsRes.data) setSubs(subsRes.data as SubRow[]);
+    if (auditsRes.data) setLiveAudits(auditsRes.data as LiveAudit[]);
+    setLoading(false);
   };
 
   const mrr = subs.reduce((s, sub) => s + sub.price_sar, 0);
@@ -88,6 +107,7 @@ export default function AdminDashboard() {
 
   const unresolvedAlerts = alerts.filter((a) => !a.resolved);
   const criticalAlerts = unresolvedAlerts.filter((a) => a.alert_type === "critical" || a.alert_type === "tampering");
+  const storeNameMap = Object.fromEntries(stores.map((s) => [s.id, s.name]));
 
   const handleQueryApproval = async (storeId: string, approved: boolean) => {
     await supabase.from("stores").update({ query_status: approved ? "approved" : "rejected" }).eq("id", storeId);
@@ -102,16 +122,16 @@ export default function AdminDashboard() {
   };
 
   const tabs = [
-    { id: "overview" as const, label: "نظرة عامة" },
-    { id: "queries" as const, label: "إدارة الاستعلامات" },
-    { id: "alerts" as const, label: `التنبيهات الأمنية (${unresolvedAlerts.length})` },
-    { id: "tickets" as const, label: `تذاكر الدعم (${tickets.filter(t => t.status === "open").length})` },
+    { id: "overview" as const, label: "نظرة عامة", icon: Shield },
+    { id: "surveillance" as const, label: "عين الإدارة", icon: Eye },
+    { id: "queries" as const, label: "اعتمادات المتاجر", icon: CheckCircle },
+    { id: "alerts" as const, label: `التنبيهات (${unresolvedAlerts.length})`, icon: AlertTriangle },
+    { id: "tickets" as const, label: `التذاكر (${tickets.filter(t => t.status === "open").length})`, icon: MessageSquare },
   ];
 
   return (
     <DashboardLayout isAdmin>
       <div className="space-y-6">
-        {/* Header */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
             <Shield className="w-5 h-5 text-accent" />
@@ -122,7 +142,6 @@ export default function AdminDashboard() {
           </div>
         </motion.div>
 
-        {/* Critical Alert Banner */}
         {criticalAlerts.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-xl bg-destructive/10 border border-destructive/30 p-4 flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-destructive animate-pulse" />
@@ -133,53 +152,59 @@ export default function AdminDashboard() {
           </motion.div>
         )}
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={Users} label="إجمالي التجار" value={String(new Set(stores.map(s => s.user_id)).size)} change={`${stores.length} متجر`} changeType="positive" glowColor="blue" />
-          <StatCard icon={DollarSign} label="الإيرادات الشهرية" value={`${mrr.toLocaleString("ar-SA")} ر.س`} change={`${subs.length} اشتراك نشط`} changeType="positive" glowColor="gold" />
-          <StatCard icon={Server} label="الأجهزة النشطة" value={String(stores.filter(s => s.hardware_choice).length)} change={`${stores.filter(s => !s.hardware_choice).length} بدون جهاز`} changeType={stores.some(s => !s.hardware_choice) ? "negative" : "positive"} glowColor="emerald" />
-          <StatCard icon={AlertTriangle} label="التنبيهات الأمنية" value={String(unresolvedAlerts.length)} change={criticalAlerts.length > 0 ? `${criticalAlerts.length} حرجة` : "لا توجد"} changeType={criticalAlerts.length > 0 ? "negative" : "positive"} glowColor="blue" />
-        </div>
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1,2,3,4].map(i => <StatCardSkeleton key={i} />)}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard icon={Users} label="إجمالي التجار" value={String(new Set(stores.map(s => s.user_id)).size)} change={`${stores.length} متجر`} changeType="positive" glowColor="blue" />
+            <StatCard icon={DollarSign} label="الإيرادات الشهرية" value={`${mrr.toLocaleString("ar-SA")} ر.س`} change={`${subs.length} اشتراك نشط`} changeType="positive" glowColor="gold" />
+            <StatCard icon={Server} label="الأجهزة النشطة" value={String(stores.filter(s => s.hardware_choice).length)} change={`${stores.filter(s => !s.hardware_choice).length} بدون جهاز`} changeType={stores.some(s => !s.hardware_choice) ? "negative" : "positive"} glowColor="emerald" />
+            <StatCard icon={AlertTriangle} label="التنبيهات الأمنية" value={String(unresolvedAlerts.length)} change={criticalAlerts.length > 0 ? `${criticalAlerts.length} حرجة` : "لا توجد"} changeType={criticalAlerts.length > 0 ? "negative" : "positive"} glowColor="blue" />
+          </div>
+        )}
 
         {/* Tabs */}
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="flex gap-2 overflow-x-auto pb-1">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-lg text-sm font-arabic whitespace-nowrap transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-arabic whitespace-nowrap transition-all ${
                 activeTab === tab.id ? "bg-primary text-primary-foreground" : "bg-card border border-border text-muted-foreground hover:text-foreground"
               }`}
             >
+              <tab.icon className="w-3.5 h-3.5" />
               {tab.label}
             </button>
           ))}
         </div>
 
-        {/* Tab Content */}
+        {/* Overview Tab */}
         {activeTab === "overview" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="lg:col-span-2 rounded-xl bg-card border border-border p-5">
               <h3 className="text-sm font-semibold text-foreground mb-4 font-arabic">المتاجر المسجلة</h3>
-              <div className="space-y-2">
-                {stores.slice(0, 10).map((store) => (
-                  <div key={store.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border">
-                    <div>
-                      <span className="text-sm font-semibold text-foreground font-arabic">{store.name}</span>
-                      <p className="text-[10px] text-muted-foreground font-mono">{store.id.slice(0, 8)}</p>
+              {loading ? <TableSkeleton rows={5} /> : (
+                <div className="space-y-2">
+                  {stores.slice(0, 10).map((store) => (
+                    <div key={store.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border">
+                      <div>
+                        <span className="text-sm font-semibold text-foreground font-arabic">{store.name}</span>
+                        <p className="text-[10px] text-muted-foreground font-mono">{store.id.slice(0, 8)}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={`text-[10px] ${store.hardware_choice ? "text-emerald border-emerald/30" : "text-accent border-accent/30"}`}>
+                          {store.hardware_choice || "بدون جهاز"}
+                        </Badge>
+                        <div className={`w-2 h-2 rounded-full ${store.is_active ? "bg-emerald" : "bg-destructive"}`} />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className={`text-[10px] ${store.hardware_choice ? "text-emerald border-emerald/30" : "text-accent border-accent/30"}`}>
-                        {store.hardware_choice || "بدون جهاز"}
-                      </Badge>
-                      <div className={`w-2 h-2 rounded-full ${store.is_active ? "bg-emerald" : "bg-destructive"}`} />
-                    </div>
-                  </div>
-                ))}
-                {stores.length === 0 && (
-                  <p className="text-center text-sm text-muted-foreground py-8 font-arabic">لا توجد متاجر مسجلة بعد</p>
-                )}
-              </div>
+                  ))}
+                  {stores.length === 0 && <p className="text-center text-sm text-muted-foreground py-8 font-arabic">لا توجد متاجر مسجلة بعد</p>}
+                </div>
+              )}
             </motion.div>
 
             {tierData.length > 0 && (
@@ -205,9 +230,63 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* 👁️ Surveillance Tab — عين الإدارة */}
+        {activeTab === "surveillance" && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Eye className="w-5 h-5 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground font-arabic">عين الإدارة — آخر التدقيقات لحظياً</h3>
+              <span className="text-[10px] text-emerald font-mono animate-pulse">● LIVE</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {liveAudits.slice(0, 12).map((audit) => {
+                const isFail = audit.status === "fail";
+                return (
+                  <motion.div
+                    key={audit.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className={`rounded-xl bg-card border p-4 transition-all ${
+                      isFail ? "border-destructive/50 shadow-[0_0_25px_-5px_hsl(0,84%,60%,0.4)] animate-pulse" : "border-border"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-foreground font-arabic">{storeNameMap[audit.store_id] || audit.store_id.slice(0, 8)}</span>
+                      <Badge variant="outline" className={`text-[10px] ${
+                        audit.status === "pass" ? "text-emerald border-emerald/30" : audit.status === "warning" ? "text-accent border-accent/30" : "text-destructive border-destructive/30"
+                      }`}>
+                        {audit.status === "pass" ? "ناجح" : audit.status === "warning" ? "تحذير" : "فشل"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-lg font-bold font-mono ${
+                        (audit.score || 0) >= 80 ? "text-emerald" : (audit.score || 0) >= 50 ? "text-accent" : "text-destructive"
+                      }`}>
+                        {audit.score !== null ? `${audit.score}%` : "—"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        <Clock className="w-3 h-3 inline me-1" />
+                        {new Date(audit.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    {audit.summary && <p className="text-[10px] text-muted-foreground mt-1 font-arabic truncate">{audit.summary}</p>}
+                  </motion.div>
+                );
+              })}
+            </div>
+            {liveAudits.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground text-sm font-arabic">
+                <Eye className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                بانتظار بيانات التدقيق من المتاجر...
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Queries Tab — اعتمادات المتاجر */}
         {activeTab === "queries" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-            <p className="text-sm text-muted-foreground font-arabic">مراجعة والموافقة على استعلامات التدقيق المخصصة من التجار</p>
+            <p className="text-sm text-muted-foreground font-arabic">مراجعة والموافقة على استعلامات التدقيق المخصصة — فقط المعتمدة تظهر في الـ remote-config</p>
             {stores.filter(s => s.custom_queries && (s.custom_queries as any[]).length > 0).map((store) => (
               <div key={store.id} className="rounded-xl bg-card border border-border p-5">
                 <div className="flex items-center justify-between mb-3">
@@ -241,6 +320,7 @@ export default function AdminDashboard() {
           </motion.div>
         )}
 
+        {/* Alerts Tab */}
         {activeTab === "alerts" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
             {alerts.map((alert) => (
@@ -253,23 +333,21 @@ export default function AdminDashboard() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-foreground font-arabic">{alert.alert_type}</span>
-                    <span className="text-xs text-muted-foreground font-mono">
-                      {new Date(alert.created_at).toLocaleString("ar-SA")}
-                    </span>
+                    <span className="text-xs text-muted-foreground font-mono">{new Date(alert.created_at).toLocaleString("ar-SA")}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5 font-arabic">{alert.message}</p>
+                  {alert.store_id && <span className="text-[10px] text-muted-foreground/60 font-arabic">المتجر: {storeNameMap[alert.store_id] || alert.store_id.slice(0, 8)}</span>}
                 </div>
                 {(alert.alert_type === "critical" || alert.alert_type === "tampering") && (
                   <span className="text-[10px] font-bold uppercase tracking-widest text-destructive animate-pulse">حرج</span>
                 )}
               </div>
             ))}
-            {alerts.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground py-8 font-arabic">لا توجد تنبيهات أمنية</p>
-            )}
+            {alerts.length === 0 && <p className="text-center text-sm text-muted-foreground py-8 font-arabic">لا توجد تنبيهات أمنية</p>}
           </motion.div>
         )}
 
+        {/* Tickets Tab */}
         {activeTab === "tickets" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
             {tickets.map((ticket) => (
@@ -281,9 +359,7 @@ export default function AdminDashboard() {
                       <h4 className="text-sm font-bold text-foreground font-arabic">{ticket.subject}</h4>
                     </div>
                     <p className="text-xs text-muted-foreground font-arabic line-clamp-2">{ticket.description}</p>
-                    <p className="text-[10px] text-muted-foreground/60 mt-2 font-mono">
-                      {new Date(ticket.created_at).toLocaleString("ar-SA")}
-                    </p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-2 font-mono">{new Date(ticket.created_at).toLocaleString("ar-SA")}</p>
                   </div>
                   <div className="flex flex-col gap-2 items-end">
                     <Badge variant="outline" className={`text-[10px] ${
@@ -309,9 +385,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             ))}
-            {tickets.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground py-8 font-arabic">لا توجد تذاكر دعم</p>
-            )}
+            {tickets.length === 0 && <p className="text-center text-sm text-muted-foreground py-8 font-arabic">لا توجد تذاكر دعم</p>}
           </motion.div>
         )}
       </div>

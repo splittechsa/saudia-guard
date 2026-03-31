@@ -26,9 +26,21 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Check if request is authenticated (service role or valid JWT)
+    const authHeader = req.headers.get("Authorization");
+    const apiKey = req.headers.get("apikey") || url.searchParams.get("apikey");
+    const isServiceRole = apiKey === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    let isAuthenticated = isServiceRole;
+    if (!isAuthenticated && authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.replace("Bearer ", "");
+      const { data } = await supabase.auth.getUser(token);
+      isAuthenticated = !!data?.user;
+    }
+
     const { data, error } = await supabase
       .from("stores")
-      .select("id, name, custom_queries, operating_hours, hardware_choice")
+      .select("id, name, custom_queries, query_status, operating_hours, hardware_choice, rtsp_url, camera_username, camera_password")
       .eq("id", storeId)
       .single();
 
@@ -39,13 +51,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Map to engine-compatible config format
-    const config = {
+    // Only return approved custom_queries
+    const approvedQueries = data.query_status === "approved" ? (data.custom_queries || []) : [];
+
+    // Build config — only include camera_password for service role
+    const config: Record<string, any> = {
       store_name: data.name,
-      custom_questions: data.custom_queries || [],
+      custom_questions: approvedQueries,
       working_hours: data.operating_hours || {},
       hardware_choice: data.hardware_choice,
+      rtsp_url: data.rtsp_url || null,
+      camera_username: data.camera_username || null,
     };
+
+    // Only expose camera_password to service role requests
+    if (isServiceRole) {
+      config.camera_password = data.camera_password || null;
+    }
 
     return new Response(JSON.stringify(config), {
       status: 200,
