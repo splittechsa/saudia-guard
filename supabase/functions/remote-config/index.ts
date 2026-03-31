@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
 
     const { data, error } = await supabase
       .from("stores")
-      .select("id, name, custom_queries, query_status, operating_hours, hardware_choice, rtsp_url, camera_username, camera_password, is_active, interval_minutes")
+      .select("id, name, custom_queries, query_status, operating_hours, hardware_choice, rtsp_url, camera_username, camera_password, is_active, interval_minutes, remote_command")
       .eq("id", storeId)
       .single();
 
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       camera_username: data.camera_username || null,
       is_active: data.is_active ?? true,
       interval_minutes: data.interval_minutes ?? 5,
-    };
+      remote_command: data.remote_command || "run",
 
     // Only expose camera_password to service role requests
     if (isServiceRole) {

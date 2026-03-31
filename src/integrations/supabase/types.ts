@@ -162,6 +162,7 @@ export type Database = {
           name: string
           operating_hours: Json | null
           query_status: string
+          remote_command: string
           rtsp_url: string | null
           updated_at: string
           user_id: string
@@ -178,6 +179,7 @@ export type Database = {
           name: string
           operating_hours?: Json | null
           query_status?: string
+          remote_command?: string
           rtsp_url?: string | null
           updated_at?: string
           user_id: string
@@ -194,6 +196,7 @@ export type Database = {
           name?: string
           operating_hours?: Json | null
           query_status?: string
+          remote_command?: string
           rtsp_url?: string | null
           updated_at?: string
           user_id?: string
@@ -273,6 +276,41 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          sender_id: string
+          sender_role: string
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          sender_id: string
+          sender_role?: string
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          sender_id?: string
+          sender_role?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
             referencedColumns: ["id"]
           },
         ]
