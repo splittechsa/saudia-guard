@@ -109,8 +109,10 @@ export default function AdminDashboard() {
       supabase.from("subscriptions").select("*").eq("status", "active"),
       supabase.from("subscriptions").select("*").eq("status", "pending").order("created_at", { ascending: false }),
       supabase.from("analytics_logs").select("id, store_id, score, status, summary, created_at").order("created_at", { ascending: false }).limit(30),
+      supabase.from("store_api_keys").select("store_id, api_key, is_active"),
     ]);
     if (storesRes.data) setStores(storesRes.data as any[]);
+    const keysRes = await Promise.resolve(arguments[0] || null); // handled below
     if (alertsRes.data) setAlerts(alertsRes.data as AlertRow[]);
     if (ticketsRes.data) setTickets(ticketsRes.data as TicketRow[]);
     if (subsRes.data) setSubs(subsRes.data as SubRow[]);
