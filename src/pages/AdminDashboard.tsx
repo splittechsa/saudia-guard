@@ -73,7 +73,7 @@ export default function AdminDashboard() {
   const [pendingSubs, setPendingSubs] = useState<SubRow[]>([]);
   const [liveAudits, setLiveAudits] = useState<LiveAudit[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "surveillance" | "engines" | "users" | "queries" | "approvals" | "alerts" | "tickets">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "surveillance" | "engines" | "users" | "queries" | "approvals" | "alerts" | "tickets" | "broadcast">("overview");
   const [apiKeys, setApiKeys] = useState<Record<string, { api_key: string; is_active: boolean }>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null);
