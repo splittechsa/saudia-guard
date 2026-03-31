@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Send, X, Download, Shield, Wrench, User } from "lucide-react";
+import { Send, X, Download, Shield, Wrench, User, Bot, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +38,7 @@ const ROLE_LABELS: Record<string, string> = {
   it_support: "الدعم التقني",
   customer_support: "دعم العملاء",
   super_owner: "المالك",
+  ai_bot: "المساعد الذكي",
 };
 
 const ROLE_ICONS: Record<string, typeof User> = {
@@ -45,6 +46,7 @@ const ROLE_ICONS: Record<string, typeof User> = {
   it_support: Wrench,
   super_owner: Shield,
   customer_support: User,
+  ai_bot: Bot,
 };
 
 export default function TicketChat({ ticket, onClose, onStatusChange, senderRole = "merchant" }: TicketChatProps) {
@@ -52,6 +54,7 @@ export default function TicketChat({ ticket, onClose, onStatusChange, senderRole
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMsg, setNewMsg] = useState("");
   const [sending, setSending] = useState(false);
+  const [aiThinking, setAiThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isResolved = ticket.status === "resolved" || ticket.status === "closed";
 
@@ -86,12 +89,13 @@ export default function TicketChat({ ticket, onClose, onStatusChange, senderRole
 
   const handleSend = async () => {
     if (!user || !newMsg.trim() || isResolved) return;
+    const msgText = newMsg.trim();
     setSending(true);
     const { error } = await supabase.from("ticket_messages").insert({
       ticket_id: ticket.id,
       sender_id: user.id,
       sender_role: senderRole,
-      message: newMsg.trim(),
+      message: msgText,
     });
     setSending(false);
     if (error) {
@@ -99,6 +103,27 @@ export default function TicketChat({ ticket, onClose, onStatusChange, senderRole
       return;
     }
     setNewMsg("");
+
+    // Trigger AI bot response for merchant messages
+    if (senderRole === "merchant") {
+      setAiThinking(true);
+      try {
+        const history = messages.slice(-10).map(m => ({
+          role: m.sender_role === "ai_bot" ? "assistant" as const : "user" as const,
+          content: m.message,
+        }));
+
+        const { data, error: fnError } = await supabase.functions.invoke("ai-support-chat", {
+          body: { ticket_id: ticket.id, message: msgText, conversation_history: history },
+        });
+
+        if (fnError) console.error("AI bot error:", fnError);
+      } catch (e) {
+        console.error("AI bot error:", e);
+      } finally {
+        setAiThinking(false);
+      }
+    }
   };
 
   const handleResolve = () => {
@@ -183,6 +208,7 @@ export default function TicketChat({ ticket, onClose, onStatusChange, senderRole
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
                   msg.sender_role === "super_owner" ? "bg-destructive/20" :
                   msg.sender_role === "it_support" ? "bg-accent/20" :
+                  msg.sender_role === "ai_bot" ? "bg-emerald/20" :
                   "bg-primary/20"
                 }`}>
                   <RoleIcon className="w-3.5 h-3.5 text-foreground" />
@@ -203,8 +229,21 @@ export default function TicketChat({ ticket, onClose, onStatusChange, senderRole
               </motion.div>
             );
           })}
-          {messages.length === 0 && (
-            <p className="text-center text-xs text-muted-foreground py-8 font-arabic">لا توجد رسائل بعد — ابدأ المحادثة</p>
+          {aiThinking && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-emerald/20">
+                <Bot className="w-3.5 h-3.5 text-emerald" />
+              </div>
+              <div className="rounded-xl px-3 py-2 bg-emerald/10 border border-emerald/20">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-3 h-3 animate-spin text-emerald" />
+                  <span className="text-[10px] text-emerald font-arabic">المساعد الذكي يفكر...</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+          {messages.length === 0 && !aiThinking && (
+            <p className="text-center text-xs text-muted-foreground py-8 font-arabic">لا توجد رسائل بعد — ابدأ المحادثة. المساعد الذكي سيرد تلقائياً.</p>
           )}
         </div>
 
