@@ -49,7 +49,7 @@ export default function Dashboard() {
   const [pendingSetupStore, setPendingSetupStore] = useState<StoreData | null>(null);
   const [audits, setAudits] = useState<AuditLog[]>([]);
   const [chartData, setChartData] = useState<{ time: string; score: number }[]>([]);
-
+  const [showWelcome, setShowWelcome] = useState(false);
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
