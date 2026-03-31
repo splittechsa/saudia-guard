@@ -14,11 +14,17 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { signIn, user } = useAuth();
+  const { signIn, user, roles, hasRole } = useAuth();
+
+  const getRedirectPath = () => {
+    if (hasRole("super_owner")) return "/admin";
+    if (hasRole("it_support")) return "/it-dashboard";
+    return "/dashboard";
+  };
 
   // Redirect if already logged in
-  if (user) {
-    navigate("/dashboard");
+  if (user && roles.length > 0) {
+    navigate(getRedirectPath());
     return null;
   }
 
@@ -34,7 +40,17 @@ export default function Login() {
     if (error) {
       toast.error(error.message);
     } else {
-      navigate("/dashboard");
+      // Wait briefly for roles to load, then redirect
+      setTimeout(async () => {
+        const { data: rolesData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", (await supabase.auth.getUser()).data.user?.id || "");
+        const userRoles = rolesData?.map((r: any) => r.role) || [];
+        if (userRoles.includes("super_owner")) navigate("/admin");
+        else if (userRoles.includes("it_support")) navigate("/it-dashboard");
+        else navigate("/dashboard");
+      }, 300);
     }
   };
 
