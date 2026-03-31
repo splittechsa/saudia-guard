@@ -6,6 +6,8 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
 import { AuditLogItem } from "@/components/ui/audit-log-item";
 import HardwareSetup from "@/components/dashboard/HardwareSetup";
+import { ComparativeChart } from "@/components/dashboard/ComparativeChart";
+import { WelcomeTutorial } from "@/components/dashboard/WelcomeTutorial";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
