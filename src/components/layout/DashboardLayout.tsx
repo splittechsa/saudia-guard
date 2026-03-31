@@ -19,6 +19,7 @@ const navItems = [
 
 const adminItems = [
   { icon: LayoutDashboard, label: "نظرة عامة", path: "/admin" },
+  { icon: Server, label: "حالة النظام", path: "/admin/system-status" },
   { icon: Users, label: "التجار والمتاجر", path: "/admin" },
   { icon: Shield, label: "التنبيهات الأمنية", path: "/admin" },
   { icon: MessageSquare, label: "تذاكر الدعم", path: "/admin" },
