@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, DollarSign, Server, AlertTriangle, Shield, CheckCircle, XCircle, Clock, Eye, MessageSquare, UserPlus } from "lucide-react";
+import { Users, DollarSign, Server, AlertTriangle, Shield, CheckCircle, XCircle, Clock, Eye, MessageSquare, UserPlus, Search } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +74,7 @@ export default function AdminDashboard() {
   const [profiles, setProfiles] = useState<Record<string, ProfileRow>>({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"overview" | "surveillance" | "queries" | "approvals" | "alerts" | "tickets">("overview");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     fetchAll();
@@ -178,6 +179,18 @@ export default function AdminDashboard() {
           </div>
         </motion.div>
 
+        {/* Global Search */}
+        <div className="relative">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="ابحث عن متجر، تذكرة، أو معرّف عميل..."
+            className="w-full bg-card border border-border rounded-xl py-2.5 pr-10 pl-4 text-sm text-foreground font-arabic placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+
         {/* Pending subscriptions banner */}
         {pendingSubs.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-xl bg-accent/10 border border-accent/30 p-4 flex items-center gap-3">
@@ -232,53 +245,105 @@ export default function AdminDashboard() {
         </div>
 
         {/* Overview Tab */}
-        {activeTab === "overview" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="lg:col-span-2 rounded-xl bg-card border border-border p-5">
-              <h3 className="text-sm font-semibold text-foreground mb-4 font-arabic">المتاجر المسجلة</h3>
-              {loading ? <TableSkeleton rows={5} /> : (
-                <div className="space-y-2">
-                  {stores.slice(0, 10).map((store) => (
-                    <div key={store.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border">
-                      <div>
-                        <span className="text-sm font-semibold text-foreground font-arabic">{store.name}</span>
-                        <p className="text-[10px] text-muted-foreground font-mono">{store.id.slice(0, 8)}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={`text-[10px] ${store.hardware_choice ? "text-emerald border-emerald/30" : "text-accent border-accent/30"}`}>
-                          {store.hardware_choice || "بدون جهاز"}
-                        </Badge>
-                        <div className={`w-2 h-2 rounded-full ${store.is_active ? "bg-emerald" : "bg-destructive"}`} />
-                      </div>
-                    </div>
-                  ))}
-                  {stores.length === 0 && <p className="text-center text-sm text-muted-foreground py-8 font-arabic">لا توجد متاجر مسجلة بعد</p>}
+        {activeTab === "overview" && (() => {
+          const q = searchQuery.toLowerCase();
+          const filteredStores = q ? stores.filter((s) => s.name.toLowerCase().includes(q) || s.id.includes(q) || s.user_id.includes(q)) : stores;
+          const filteredTickets = q ? tickets.filter((t) => t.subject.toLowerCase().includes(q) || t.id.includes(q)) : [];
+
+          return (
+          <div className="space-y-6">
+            {/* Revenue Tracker */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-gradient-to-l from-accent/5 to-card border border-accent/20 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <DollarSign className="w-5 h-5 text-accent" />
+                <h3 className="text-sm font-semibold text-foreground font-arabic">تعقب الإيرادات</h3>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground font-arabic">الإيرادات الشهرية (MRR)</p>
+                  <p className="text-2xl font-bold text-accent font-mono mt-1">{mrr.toLocaleString("ar-SA")} <span className="text-xs">ر.س</span></p>
                 </div>
-              )}
+                <div>
+                  <p className="text-xs text-muted-foreground font-arabic">الإيراد السنوي المتوقع (ARR)</p>
+                  <p className="text-2xl font-bold text-foreground font-mono mt-1">{(mrr * 12).toLocaleString("ar-SA")} <span className="text-xs">ر.س</span></p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-arabic">اشتراكات نشطة</p>
+                  <p className="text-2xl font-bold text-emerald font-mono mt-1">{subs.length}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-arabic">طلبات معلقة</p>
+                  <p className="text-2xl font-bold text-primary font-mono mt-1">{pendingSubs.length}</p>
+                </div>
+              </div>
             </motion.div>
 
-            {tierData.length > 0 && (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl bg-card border border-border p-5">
-                <h3 className="text-sm font-semibold text-foreground mb-4 font-arabic">توزيع الباقات</h3>
-                <ResponsiveContainer width="100%" height={180}>
-                  <PieChart>
-                    <Pie data={tierData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={3} dataKey="value">
-                      {tierData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex justify-center gap-4 mt-2">
-                  {tierData.map((t) => (
-                    <div key={t.name} className="flex items-center gap-1.5">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color }} />
-                      <span className="text-[11px] text-muted-foreground">{t.name} ({t.value})</span>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="lg:col-span-2 rounded-xl bg-card border border-border p-5">
+                <h3 className="text-sm font-semibold text-foreground mb-4 font-arabic">المتاجر المسجلة {q && `(${filteredStores.length})`}</h3>
+                {loading ? <TableSkeleton rows={5} /> : (
+                  <div className="space-y-2">
+                    {filteredStores.slice(0, 15).map((store) => (
+                      <div key={store.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border">
+                        <div>
+                          <span className="text-sm font-semibold text-foreground font-arabic">{store.name}</span>
+                          <p className="text-[10px] text-muted-foreground font-mono">{store.id.slice(0, 8)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className={`text-[10px] ${store.hardware_choice ? "text-emerald border-emerald/30" : "text-accent border-accent/30"}`}>
+                            {store.hardware_choice || "بدون جهاز"}
+                          </Badge>
+                          <div className={`w-2 h-2 rounded-full ${store.is_active ? "bg-emerald" : "bg-destructive"}`} />
+                        </div>
+                      </div>
+                    ))}
+                    {filteredStores.length === 0 && <p className="text-center text-sm text-muted-foreground py-8 font-arabic">{q ? "لا توجد نتائج" : "لا توجد متاجر مسجلة بعد"}</p>}
+                  </div>
+                )}
+              </motion.div>
+
+              {tierData.length > 0 && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl bg-card border border-border p-5">
+                  <h3 className="text-sm font-semibold text-foreground mb-4 font-arabic">توزيع الباقات</h3>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <PieChart>
+                      <Pie data={tierData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={3} dataKey="value">
+                        {tierData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex justify-center gap-4 mt-2">
+                    {tierData.map((t) => (
+                      <div key={t.name} className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color }} />
+                        <span className="text-[11px] text-muted-foreground">{t.name} ({t.value})</span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+            {/* Search results for tickets */}
+            {q && filteredTickets.length > 0 && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-xl bg-card border border-border p-5">
+                <h3 className="text-sm font-semibold text-foreground mb-3 font-arabic">نتائج البحث — التذاكر ({filteredTickets.length})</h3>
+                <div className="space-y-2">
+                  {filteredTickets.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border">
+                      <div>
+                        <span className="text-sm font-semibold text-foreground font-arabic">{t.subject}</span>
+                        <p className="text-[10px] text-muted-foreground font-mono">{t.id.slice(0, 8)}</p>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">{t.status}</Badge>
                     </div>
                   ))}
                 </div>
               </motion.div>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {/* Surveillance Tab */}
         {activeTab === "surveillance" && (

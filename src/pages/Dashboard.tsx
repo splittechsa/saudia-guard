@@ -6,6 +6,8 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
 import { AuditLogItem } from "@/components/ui/audit-log-item";
 import HardwareSetup from "@/components/dashboard/HardwareSetup";
+import { ComparativeChart } from "@/components/dashboard/ComparativeChart";
+import { WelcomeTutorial } from "@/components/dashboard/WelcomeTutorial";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,7 +49,7 @@ export default function Dashboard() {
   const [pendingSetupStore, setPendingSetupStore] = useState<StoreData | null>(null);
   const [audits, setAudits] = useState<AuditLog[]>([]);
   const [chartData, setChartData] = useState<{ time: string; score: number }[]>([]);
-
+  const [showWelcome, setShowWelcome] = useState(false);
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
@@ -75,6 +77,12 @@ export default function Dashboard() {
 
       setDashState("active");
 
+      // Show welcome tutorial on first activation
+      const tutorialKey = `split_welcome_${user.id}`;
+      if (!localStorage.getItem(tutorialKey)) {
+        setShowWelcome(true);
+        localStorage.setItem(tutorialKey, "1");
+      }
       const needsSetup = storesData.find((s) => !s.hardware_choice);
       if (needsSetup) setPendingSetupStore(needsSetup);
 
@@ -228,6 +236,7 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
+      {showWelcome && <WelcomeTutorial onClose={() => setShowWelcome(false)} />}
       <div className="space-y-6">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <h1 className="text-2xl font-bold text-foreground font-arabic">مرحباً، {displayName}</h1>
@@ -254,6 +263,8 @@ export default function Dashboard() {
           <StatCard icon={BarChart3} label="متوسط النتيجة" value={avgScore > 0 ? `${avgScore}%` : "--"} numericValue={avgScore > 0 ? avgScore : undefined} change={avgScore >= 80 ? "أداء ممتاز" : avgScore > 0 ? "يحتاج تحسين" : "لا توجد بيانات"} changeType={avgScore >= 80 ? "positive" : avgScore > 0 ? "negative" : "neutral"} glowColor="gold" />
           <StatCard icon={Cpu} label="الأجهزة" value={stores.filter((s) => s.hardware_choice).length + "/" + stores.length} change={pendingSetupStore ? "يحتاج إعداد" : "مكتمل"} changeType={pendingSetupStore ? "negative" : "positive"} glowColor="blue" />
         </div>
+
+        <ComparativeChart audits={audits} />
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="lg:col-span-3 rounded-xl bg-card border border-border p-5">

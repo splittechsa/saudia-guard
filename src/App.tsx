@@ -18,6 +18,7 @@ import Support from "./pages/Support";
 import Reports from "./pages/Reports";
 import StoreSetup from "./pages/StoreSetup";
 import SystemStatus from "./pages/SystemStatus";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/dashboard/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
             <Route path="/dashboard/store-setup" element={<ProtectedRoute><StoreSetup /></ProtectedRoute>} />
+            <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requiredRole="super_owner"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/system-status" element={<ProtectedRoute requiredRole="super_owner"><SystemStatus /></ProtectedRoute>} />
             <Route path="/terms" element={<Terms />} />

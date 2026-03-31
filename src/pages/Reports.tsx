@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Download, Filter, Calendar, TrendingUp, AlertTriangle, CheckCircle, BarChart3, FileText } from "lucide-react";
+import { Download, Filter, Calendar, TrendingUp, AlertTriangle, CheckCircle, BarChart3, FileText, FileDown } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -145,6 +145,66 @@ export default function Reports() {
     URL.revokeObjectURL(url);
   };
 
+  const exportPDF = async () => {
+    const { default: jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+    // Header
+    doc.setFillColor(2, 2, 2);
+    doc.rect(0, 0, 210, 40, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.text("Split Intelligence", 105, 18, { align: "center" });
+    doc.setFontSize(10);
+    doc.setTextColor(180, 180, 180);
+    doc.text("Audit Report", 105, 28, { align: "center" });
+
+    // Stats
+    doc.setTextColor(0, 0, 0);
+    let y = 50;
+    doc.setFontSize(11);
+    doc.text(`Total Audits: ${stats.total}`, 20, y);
+    doc.text(`Passed: ${stats.passed}`, 80, y);
+    doc.text(`Warnings: ${stats.warnings}`, 120, y);
+    doc.text(`Failed: ${stats.failed}`, 160, y);
+    y += 8;
+    doc.text(`Average Score: ${stats.avg}%`, 20, y);
+    doc.text(`Date: ${new Date().toLocaleDateString("en-SA")}`, 120, y);
+    y += 12;
+
+    // Table header
+    doc.setFillColor(10, 10, 10);
+    doc.rect(15, y, 180, 8, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.text("Date", 18, y + 5.5);
+    doc.text("Store", 55, y + 5.5);
+    doc.text("Status", 100, y + 5.5);
+    doc.text("Score", 130, y + 5.5);
+    doc.text("Summary", 150, y + 5.5);
+    y += 10;
+
+    // Table rows
+    doc.setTextColor(0, 0, 0);
+    filtered.slice(0, 40).forEach((audit) => {
+      if (y > 275) { doc.addPage(); y = 20; }
+      doc.setFontSize(7);
+      doc.text(new Date(audit.created_at).toLocaleString("en-SA").slice(0, 16), 18, y);
+      doc.text((storeNameMap[audit.store_id] || "-").slice(0, 20), 55, y);
+      doc.text(audit.status || "-", 100, y);
+      doc.text(String(audit.score ?? "-"), 130, y);
+      doc.text((audit.summary || "-").slice(0, 25), 150, y);
+      y += 5;
+    });
+
+    // Footer
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text("Powered by Split Intelligence | splittechsa.com", 105, 290, { align: "center" });
+
+    doc.save(`split-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -153,9 +213,14 @@ export default function Reports() {
             <h1 className="text-2xl font-bold text-foreground font-arabic">التقارير والتحليلات</h1>
             <p className="text-sm text-muted-foreground mt-1 font-arabic">تحليل شامل لنتائج التدقيق التشغيلي</p>
           </div>
-          <Button onClick={exportCSV} variant="outline" className="border-emerald/30 text-emerald hover:bg-emerald/10 font-arabic">
-            <Download className="w-4 h-4 me-2" /> تصدير CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={exportCSV} variant="outline" className="border-emerald/30 text-emerald hover:bg-emerald/10 font-arabic">
+              <Download className="w-4 h-4 me-2" /> تصدير CSV
+            </Button>
+            <Button onClick={exportPDF} variant="outline" className="border-primary/30 text-primary hover:bg-primary/10 font-arabic">
+              <FileDown className="w-4 h-4 me-2" /> تصدير PDF
+            </Button>
+          </div>
         </motion.div>
 
         {/* Filters */}
