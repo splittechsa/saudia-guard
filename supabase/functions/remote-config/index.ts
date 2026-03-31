@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
 
     const { data, error } = await supabase
       .from("stores")
-      .select("id, name, custom_queries, query_status, operating_hours, hardware_choice, rtsp_url, camera_username, camera_password, is_active, interval_minutes")
+      .select("id, name, custom_queries, query_status, operating_hours, hardware_choice, rtsp_url, camera_username, camera_password, is_active, interval_minutes, remote_command")
       .eq("id", storeId)
       .single();
 

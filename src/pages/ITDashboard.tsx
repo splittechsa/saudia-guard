@@ -43,7 +43,7 @@ interface TicketRow {
 }
 
 export default function ITDashboard() {
-  const { user } = useAuth();
+  useAuth();
   const [storeHealths, setStoreHealths] = useState<StoreHealth[]>([]);
   const [recentLogs, setRecentLogs] = useState<AuditLog[]>([]);
   const [tickets, setTickets] = useState<TicketRow[]>([]);

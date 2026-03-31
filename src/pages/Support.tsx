@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
-import { Plus, Clock, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { Plus, Clock, AlertCircle, CheckCircle, Loader2, MessageSquare } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import TicketChat from "@/components/tickets/TicketChat";
 
 interface Ticket {
   id: string;
@@ -18,6 +19,7 @@ interface Ticket {
   description: string;
   priority: string;
   status: string;
+  user_id: string;
   created_at: string;
 }
 
@@ -43,6 +45,7 @@ export default function Support() {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
   const [submitting, setSubmitting] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -152,13 +155,15 @@ export default function Support() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className="rounded-xl bg-card border border-border p-5 hover:border-primary/20 transition-all"
+                  onClick={() => setSelectedTicket(ticket)}
+                  className="rounded-xl bg-card border border-border p-5 hover:border-primary/20 transition-all cursor-pointer"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <StatusIcon className={`w-4 h-4 ${ticket.status === 'resolved' ? 'text-emerald' : ticket.status === 'in_progress' ? 'text-accent animate-spin' : 'text-muted-foreground'}`} />
                         <h3 className="text-sm font-bold text-foreground font-arabic">{ticket.subject}</h3>
+                        <MessageSquare className="w-3.5 h-3.5 text-primary/50" />
                       </div>
                       <p className="text-xs text-muted-foreground font-arabic line-clamp-2">{ticket.description}</p>
                       <p className="text-[10px] text-muted-foreground/60 mt-2 font-mono">
@@ -179,6 +184,15 @@ export default function Support() {
             })
           )}
         </div>
+
+        {/* Ticket Chat Modal */}
+        {selectedTicket && (
+          <TicketChat
+            ticket={selectedTicket}
+            onClose={() => setSelectedTicket(null)}
+            senderRole="merchant"
+          />
+        )}
       </div>
     </DashboardLayout>
   );
