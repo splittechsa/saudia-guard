@@ -136,6 +136,17 @@ export default function AdminDashboard() {
   const criticalAlerts = unresolvedAlerts.filter((a) => a.alert_type === "critical" || a.alert_type === "tampering");
   const storeNameMap = Object.fromEntries(stores.map((s) => [s.id, s.name]));
 
+  // Store lifecycle stats
+  const draftStores = stores.filter(s => s.store_status === "draft" || !s.store_status);
+  const pendingReviewStores = stores.filter(s => s.store_status === "pending_review");
+  const activeStores = stores.filter(s => s.store_status === "active");
+  const suspendedStores = stores.filter(s => s.store_status === "suspended");
+
+  // IT performance: stores approved today
+  const todayStr = new Date().toDateString();
+  const approvedToday = stores.filter(s => s.reviewed_at && new Date(s.reviewed_at).toDateString() === todayStr).length;
+  const pendingTickets = tickets.filter(t => t.status === "open" || t.status === "in_progress").length;
+
   const storeLastAudit = liveAudits.reduce((acc, a) => {
     if (!acc[a.store_id] || new Date(a.created_at) > new Date(acc[a.store_id])) {
       acc[a.store_id] = a.created_at;
