@@ -237,6 +237,7 @@ export type Database = {
           store_status: string
           updated_at: string
           user_id: string
+          whatsapp_enabled: boolean | null
         }
         Insert: {
           camera_password?: string | null
@@ -259,6 +260,7 @@ export type Database = {
           store_status?: string
           updated_at?: string
           user_id: string
+          whatsapp_enabled?: boolean | null
         }
         Update: {
           camera_password?: string | null
@@ -281,6 +283,7 @@ export type Database = {
           store_status?: string
           updated_at?: string
           user_id?: string
+          whatsapp_enabled?: boolean | null
         }
         Relationships: []
       }

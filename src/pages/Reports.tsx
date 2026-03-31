@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
+import { LiveAuditFeed } from "@/components/dashboard/LiveAuditFeed";
 import { Download, Filter, Calendar, TrendingUp, AlertTriangle, CheckCircle, BarChart3, FileText, FileDown } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -369,6 +370,9 @@ export default function Reports() {
             )}
           </motion.div>
         </div>
+
+        {/* Live Audit Feed */}
+        <LiveAuditFeed storeIds={stores.map((s) => s.id)} storeNameMap={storeNameMap} />
 
         {/* Audit Table */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl bg-card border border-border overflow-hidden">

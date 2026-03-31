@@ -8,7 +8,8 @@ import { AuditLogItem } from "@/components/ui/audit-log-item";
 import HardwareSetup from "@/components/dashboard/HardwareSetup";
 import { ComparativeChart } from "@/components/dashboard/ComparativeChart";
 import { WelcomeTutorial } from "@/components/dashboard/WelcomeTutorial";
-import { OperatingHoursScheduler } from "@/components/dashboard/OperatingHoursScheduler";
+import { MerchantControlPanel } from "@/components/dashboard/MerchantControlPanel";
+import { LiveAuditFeed } from "@/components/dashboard/LiveAuditFeed";
 import { BroadcastBanner } from "@/components/dashboard/BroadcastBanner";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
@@ -293,17 +294,20 @@ export default function Dashboard() {
 
         <ComparativeChart audits={audits} />
 
-        {/* Operating Hours Scheduler */}
+        {/* Merchant Control Panel + Live Feed */}
         {stores.length > 0 && subscription && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {stores.map((s) => (
-              <OperatingHoursScheduler
+              <MerchantControlPanel
                 key={s.id}
-                storeId={s.id}
-                operatingHours={(s as any).operating_hours}
+                store={{ id: s.id, name: s.name, is_active: s.is_active, operating_hours: (s as any).operating_hours, whatsapp_enabled: (s as any).whatsapp_enabled }}
                 subscriptionTier={subscription.tier}
+                onUpdate={() => {
+                  if (user) supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status, whatsapp_enabled").eq("user_id", user.id).then(({ data }) => { if (data) setStores(data); });
+                }}
               />
             ))}
+            <LiveAuditFeed storeIds={stores.map((s) => s.id)} storeNameMap={storeNameMap} />
           </div>
         )}
 
