@@ -680,6 +680,40 @@ export default function AdminDashboard() {
           </motion.div>
         )}
 
+        {/* Broadcast Tab */}
+        {activeTab === "broadcast" && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Megaphone className="w-5 h-5 text-accent" />
+              <h3 className="text-sm font-semibold text-foreground font-arabic">مركز البث — إرسال إعلان لجميع المستخدمين</h3>
+            </div>
+            <div className="rounded-xl bg-card border border-border p-6 space-y-4">
+              <Textarea
+                value={broadcastMsg}
+                onChange={(e) => setBroadcastMsg(e.target.value)}
+                placeholder="اكتب رسالة الإعلان هنا... (مثال: سيتم إيقاف النظام للصيانة يوم الخميس)"
+                className="min-h-[100px] font-arabic"
+              />
+              <div className="flex items-center gap-4">
+                <label className="text-xs text-muted-foreground font-arabic">إرسال إلى:</label>
+                <select
+                  value={broadcastTarget}
+                  onChange={(e) => setBroadcastTarget(e.target.value)}
+                  className="bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-foreground font-arabic"
+                >
+                  <option value="all">جميع المستخدمين</option>
+                  <option value="merchant">التجار فقط</option>
+                  <option value="it_support">فريق IT فقط</option>
+                </select>
+                <div className="flex-1" />
+                <Button onClick={handleSendBroadcast} disabled={sendingBroadcast || !broadcastMsg.trim()} className="font-arabic gap-2">
+                  <Send className="w-4 h-4" /> {sendingBroadcast ? "جاري الإرسال..." : "بث الإعلان"}
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Alerts Tab */}
         {activeTab === "alerts" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
