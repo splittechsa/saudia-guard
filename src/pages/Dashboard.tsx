@@ -31,6 +31,11 @@ interface SubData {
   price_sar: number;
 }
 
+interface StoreWithHours extends StoreData {
+  operating_hours: any;
+  store_status: string;
+}
+
 interface AuditLog {
   id: string;
   store_id: string;
