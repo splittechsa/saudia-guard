@@ -74,6 +74,7 @@ export default function AdminDashboard() {
   const [profiles, setProfiles] = useState<Record<string, ProfileRow>>({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"overview" | "surveillance" | "queries" | "approvals" | "alerts" | "tickets">("overview");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     fetchAll();
