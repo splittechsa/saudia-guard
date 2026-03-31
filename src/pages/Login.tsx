@@ -5,6 +5,7 @@ import { Shield, Eye, EyeOff, ArrowRight, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import { lovable } from "@/integrations/lovable/index";
 import { toast } from "sonner";
 
 export default function Login() {
