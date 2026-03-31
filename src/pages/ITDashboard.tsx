@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Server, Activity, Wifi, WifiOff, Clock, Eye, Store, AlertTriangle, CheckCircle } from "lucide-react";
+import { Server, Activity, Wifi, WifiOff, Clock, Eye, Store, AlertTriangle } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
