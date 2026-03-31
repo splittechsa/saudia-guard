@@ -327,6 +327,46 @@ export default function AdminDashboard() {
               </div>
             </motion.div>
 
+            {/* IT Performance & Store Lifecycle */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="rounded-xl bg-card border border-border p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Activity className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground font-arabic">أداء الـ IT ودورة حياة المتاجر</h3>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="rounded-lg bg-secondary/30 p-3 text-center">
+                  <p className="text-lg font-bold text-muted-foreground font-mono">{draftStores.length}</p>
+                  <p className="text-[10px] text-muted-foreground font-arabic">مسودة</p>
+                </div>
+                <div className="rounded-lg bg-accent/10 border border-accent/20 p-3 text-center">
+                  <p className="text-lg font-bold text-accent font-mono">{pendingReviewStores.length}</p>
+                  <p className="text-[10px] text-accent font-arabic">بانتظار IT</p>
+                </div>
+                <div className="rounded-lg bg-emerald/10 border border-emerald/20 p-3 text-center">
+                  <p className="text-lg font-bold text-emerald font-mono">{activeStores.length}</p>
+                  <p className="text-[10px] text-emerald font-arabic">نشط</p>
+                </div>
+                <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-center">
+                  <p className="text-lg font-bold text-destructive font-mono">{suspendedStores.length}</p>
+                  <p className="text-[10px] text-destructive font-arabic">معلّق</p>
+                </div>
+                <div className="rounded-lg bg-primary/10 border border-primary/20 p-3 text-center">
+                  <p className="text-lg font-bold text-primary font-mono">{approvedToday}</p>
+                  <p className="text-[10px] text-primary font-arabic">فعّلها IT اليوم</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-accent" />
+                  <span className="text-xs text-muted-foreground font-arabic">تذاكر معلقة: <span className="text-foreground font-bold">{pendingTickets}</span></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-destructive" />
+                  <span className="text-xs text-muted-foreground font-arabic">تنبيهات حرجة: <span className="text-foreground font-bold">{criticalAlerts.length}</span></span>
+                </div>
+              </div>
+            </motion.div>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="lg:col-span-2 rounded-xl bg-card border border-border p-5">
                 <h3 className="text-sm font-semibold text-foreground mb-4 font-arabic">المتاجر المسجلة {q && `(${filteredStores.length})`}</h3>
