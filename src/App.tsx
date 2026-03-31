@@ -17,6 +17,7 @@ import SLA from "./pages/SLA";
 import Support from "./pages/Support";
 import Reports from "./pages/Reports";
 import StoreSetup from "./pages/StoreSetup";
+import SystemStatus from "./pages/SystemStatus";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
