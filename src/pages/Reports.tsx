@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
+import { LiveAuditFeed } from "@/components/dashboard/LiveAuditFeed";
 import { Download, Filter, Calendar, TrendingUp, AlertTriangle, CheckCircle, BarChart3, FileText, FileDown } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
