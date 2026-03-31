@@ -213,9 +213,14 @@ export default function Reports() {
             <h1 className="text-2xl font-bold text-foreground font-arabic">التقارير والتحليلات</h1>
             <p className="text-sm text-muted-foreground mt-1 font-arabic">تحليل شامل لنتائج التدقيق التشغيلي</p>
           </div>
-          <Button onClick={exportCSV} variant="outline" className="border-emerald/30 text-emerald hover:bg-emerald/10 font-arabic">
-            <Download className="w-4 h-4 me-2" /> تصدير CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={exportCSV} variant="outline" className="border-emerald/30 text-emerald hover:bg-emerald/10 font-arabic">
+              <Download className="w-4 h-4 me-2" /> تصدير CSV
+            </Button>
+            <Button onClick={exportPDF} variant="outline" className="border-primary/30 text-primary hover:bg-primary/10 font-arabic">
+              <FileDown className="w-4 h-4 me-2" /> تصدير PDF
+            </Button>
+          </div>
         </motion.div>
 
         {/* Filters */}
