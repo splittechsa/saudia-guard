@@ -3,12 +3,14 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Store, BarChart3, Shield, Settings, LogOut,
-  Bell, ChevronLeft, ChevronRight, Zap, Users, HelpCircle, Activity, MessageSquare
+  Bell, ChevronLeft, ChevronRight, Zap, Users, HelpCircle, Activity, MessageSquare, Camera
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { icon: LayoutDashboard, label: "نظرة عامة", path: "/dashboard" },
+  { icon: BarChart3, label: "التقارير", path: "/dashboard/reports" },
+  { icon: Camera, label: "إعداد المتجر", path: "/dashboard/store-setup" },
   { icon: Activity, label: "التدقيقات", path: "/dashboard/audit" },
   { icon: MessageSquare, label: "الدعم الفني", path: "/support" },
   { icon: Settings, label: "الإعدادات", path: "/dashboard/settings" },
