@@ -113,4 +113,15 @@
     0% { transform: translateX(0); }
     100% { transform: translateX(50%); }
   }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .glow-red-pulse {
+    animation: red-pulse 2s ease-in-out infinite;
+  }
+  @keyframes red-pulse {
+    0%, 100% { box-shadow: 0 0 15px -5px hsl(0 84% 60% / 0.3); }
+    50% { box-shadow: 0 0 35px -5px hsl(0 84% 60% / 0.6); }
+  }
 }
