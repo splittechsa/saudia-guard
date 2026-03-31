@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   Server, Activity, Wifi, WifiOff, Clock, Eye, Store, AlertTriangle,
   MessageSquare, RefreshCw, Pause, Play, Bug, Zap, Upload, Terminal,
-  CheckCircle, XCircle, Edit3, Save, Camera
+  CheckCircle, XCircle, Edit3, Save, Camera, Megaphone
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
