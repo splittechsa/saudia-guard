@@ -65,7 +65,7 @@ interface LiveAudit {
 }
 
 export default function AdminDashboard() {
-  useAuth();
+  const { user } = useAuth();
   const [stores, setStores] = useState<StoreRow[]>([]);
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [tickets, setTickets] = useState<TicketRow[]>([]);
