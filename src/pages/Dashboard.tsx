@@ -494,7 +494,7 @@ export default function Dashboard() {
         {/* ── 6. MERCHANT CONTROL PANEL ── */}
         {stores.length > 0 && subscription && (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {stores.map(s => (
                 <MerchantControlPanel key={s.id}
                   store={{ id: s.id, name: s.name, is_active: s.is_active, operating_hours: s.operating_hours, whatsapp_enabled: s.whatsapp_enabled }}
