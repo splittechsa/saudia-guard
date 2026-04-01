@@ -44,6 +44,8 @@ const App = () => (
             
             <Route path="/dashboard/store-setup" element={<ProtectedRoute><StoreSetup /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/dashboard/audit" element={<ProtectedRoute><AuditReports /></ProtectedRoute>} />
+            <Route path="/dashboard/store-control" element={<ProtectedRoute><StoreControl /></ProtectedRoute>} />
             <Route path="/dashboard/book-appointment" element={<ProtectedRoute><AppointmentBooking /></ProtectedRoute>} />
             <Route path="/dashboard/payment-success" element={<ProtectedRoute><PostPaymentSuccess /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requiredRole="super_owner"><AdminDashboard /></ProtectedRoute>} />
