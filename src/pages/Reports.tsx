@@ -378,46 +378,27 @@ export default function Reports() {
         {/* Live Audit Feed */}
         <LiveAuditFeed storeIds={stores.map((s) => s.id)} storeNameMap={storeNameMap} />
 
-        {/* Audit Table */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl bg-card border border-border overflow-hidden">
-          <div className="p-4 border-b border-border">
-            <h3 className="text-sm font-semibold text-foreground font-arabic">سجل التدقيقات التفصيلي</h3>
+        {/* Detailed Audit Cards */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-foreground font-arabic">سجل التدقيقات التفصيلي — اضغط لعرض الأسئلة</h3>
+            <span className="text-[10px] text-muted-foreground font-mono">{filtered.length} تدقيق</span>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-right p-3 text-xs text-muted-foreground font-arabic font-medium">التاريخ</th>
-                  <th className="text-right p-3 text-xs text-muted-foreground font-arabic font-medium">المتجر</th>
-                  <th className="text-right p-3 text-xs text-muted-foreground font-arabic font-medium">الحالة</th>
-                  <th className="text-right p-3 text-xs text-muted-foreground font-arabic font-medium">النتيجة</th>
-                  <th className="text-right p-3 text-xs text-muted-foreground font-arabic font-medium">الملخص</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.slice(0, 50).map((audit) => (
-                  <tr key={audit.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                    <td className="p-3 text-xs text-muted-foreground font-mono">{new Date(audit.created_at).toLocaleString("ar-SA")}</td>
-                    <td className="p-3 text-xs text-foreground font-arabic">{storeNameMap[audit.store_id] || "—"}</td>
-                    <td className="p-3">
-                      <Badge variant="outline" className={`text-[10px] ${
-                        audit.status === "pass" ? "text-emerald border-emerald/30" : audit.status === "warning" ? "text-accent border-accent/30" : "text-destructive border-destructive/30"
-                      }`}>
-                        {audit.status === "pass" ? "ناجح" : audit.status === "warning" ? "تحذير" : "فشل"}
-                      </Badge>
-                    </td>
-                    <td className="p-3 text-xs font-mono text-foreground">{audit.score !== null ? `${audit.score}%` : "—"}</td>
-                    <td className="p-3 text-xs text-muted-foreground font-arabic max-w-[200px] truncate">{audit.summary || "—"}</td>
-                  </tr>
-                ))}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="p-8 text-center text-muted-foreground text-sm font-arabic">لا توجد تدقيقات للفترة والفلاتر المحددة</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          {filtered.length === 0 ? (
+            <div className="rounded-xl bg-card border border-border p-8 text-center text-muted-foreground text-sm font-arabic">
+              لا توجد تدقيقات للفترة والفلاتر المحددة
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[800px] overflow-y-auto">
+              {filtered.slice(0, 50).map((audit) => (
+                <AuditDetailRow
+                  key={audit.id}
+                  audit={audit}
+                  storeName={storeNameMap[audit.store_id] || "متجر"}
+                />
+              ))}
+            </div>
+          )}
         </motion.div>
       </div>
     </DashboardLayout>
