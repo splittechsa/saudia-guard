@@ -56,7 +56,7 @@ export default function StoreSetup() {
     setCamPass(store.camera_password || "");
   };
 
-  const RTSP_REGEX = /^rtsp:\/\/[\w.-]+(:\d+)?(\/\S*)?$/;
+  const RTSP_REGEX = /^rtsp:\/\/(\w[\w.-]*(:[\S]+)?@)?[\w.-]+(:\d+)?(\/\S*)?$/;
 
   const handleSave = async () => {
     if (!selectedStore) return;
