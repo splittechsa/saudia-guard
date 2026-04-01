@@ -26,6 +26,7 @@ interface Store {
 
 export default function StoreSetup() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [rtspUrl, setRtspUrl] = useState("");
