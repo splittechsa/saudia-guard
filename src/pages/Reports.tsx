@@ -18,6 +18,9 @@ interface AuditLog {
   status: string | null;
   summary: string | null;
   result: any;
+  observations: any;
+  ai_reasoning: string | null;
+  confidence_score: number | null;
   created_at: string;
 }
 
