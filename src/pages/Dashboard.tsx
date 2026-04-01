@@ -111,6 +111,10 @@ export default function Dashboard() {
   const [audits, setAudits] = useState<AuditLog[]>([]);
   const [showWelcome, setShowWelcome] = useState(false);
   const [expandedAudit, setExpandedAudit] = useState<string | null>(null);
+  const [auditPage, setAuditPage] = useState(0);
+  const [hasMoreAudits, setHasMoreAudits] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const PAGE_SIZE = 50;
 
   useEffect(() => {
     if (hasRole("super_owner")) { navigate("/admin", { replace: true }); return; }
