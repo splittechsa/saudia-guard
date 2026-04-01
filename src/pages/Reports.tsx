@@ -297,30 +297,30 @@ export default function Reports() {
           <div className="rounded-xl bg-card border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <FileText className="w-4 h-4 text-primary" />
-              <span className="text-xs text-muted-foreground font-arabic">إجمالي التدقيقات</span>
+              <span className="text-xs text-muted-foreground font-arabic">عدد الجولات</span>
             </div>
             <p className="text-2xl font-bold text-foreground font-mono">{stats.total}</p>
-          </div>
-          <div className="rounded-xl bg-card border border-border p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="w-4 h-4 text-emerald" />
-              <span className="text-xs text-muted-foreground font-arabic">ناجح</span>
-            </div>
-            <p className="text-2xl font-bold text-emerald font-mono">{stats.passed}</p>
-          </div>
-          <div className="rounded-xl bg-card border border-border p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="w-4 h-4 text-accent" />
-              <span className="text-xs text-muted-foreground font-arabic">تحذيرات</span>
-            </div>
-            <p className="text-2xl font-bold text-accent font-mono">{stats.warnings}</p>
           </div>
           <div className="rounded-xl bg-card border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="w-4 h-4 text-primary" />
               <span className="text-xs text-muted-foreground font-arabic">متوسط النتيجة</span>
             </div>
-            <p className="text-2xl font-bold text-foreground font-mono">{stats.avg}%</p>
+            <p className={`text-2xl font-bold font-mono ${stats.avg >= 80 ? "text-emerald" : stats.avg >= 50 ? "text-accent" : stats.avg > 0 ? "text-destructive" : "text-foreground"}`}>{stats.avg}%</p>
+          </div>
+          <div className="rounded-xl bg-card border border-border p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="w-4 h-4 text-emerald" />
+              <span className="text-xs text-muted-foreground font-arabic">فوق 80%</span>
+            </div>
+            <p className="text-2xl font-bold text-emerald font-mono">{stats.passed}</p>
+          </div>
+          <div className="rounded-xl bg-card border border-border p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-4 h-4 text-destructive" />
+              <span className="text-xs text-muted-foreground font-arabic">تحت 50%</span>
+            </div>
+            <p className="text-2xl font-bold text-destructive font-mono">{stats.failed}</p>
           </div>
         </div>
 
