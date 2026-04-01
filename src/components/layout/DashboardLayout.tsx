@@ -30,6 +30,7 @@ const adminItems = [
 const mobileBottomNav = [
   { icon: Home, label: "الرئيسية", path: "/dashboard" },
   { icon: Activity, label: "التدقيقات", path: "/dashboard/audit" },
+  { icon: Sliders, label: "التحكم", path: "/dashboard/store-control" },
   { icon: Headphones, label: "الدعم", path: "/support" },
   { icon: Cog, label: "الإعدادات", path: "/dashboard/settings" },
 ];
