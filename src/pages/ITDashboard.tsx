@@ -106,7 +106,7 @@ export default function ITDashboard() {
 
   const fetchData = async () => {
     const [storesRes, logsRes, ticketsRes, debugRes, profilesRes] = await Promise.all([
-      supabase.from("stores").select("id, name, user_id, is_active, store_status, hardware_choice, rtsp_url, camera_username, camera_password, remote_command, debug_mode, it_review_notes, reviewed_by, reviewed_at"),
+      supabase.from("stores").select("id, name, user_id, is_active, store_status, hardware_choice, rtsp_url, camera_username, camera_password, remote_command, debug_mode, it_review_notes, reviewed_by, reviewed_at, custom_queries, query_status, operating_hours"),
       supabase.from("analytics_logs").select("id, store_id, score, status, summary, disputed, ai_reasoning, confidence_score, created_at").order("created_at", { ascending: false }).limit(100),
       supabase.from("support_tickets").select("*").order("created_at", { ascending: false }).limit(50),
       supabase.from("system_logs").select("*").order("created_at", { ascending: false }).limit(50),
