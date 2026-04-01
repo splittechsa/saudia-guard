@@ -11,6 +11,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import HardwareSetup from "@/components/dashboard/HardwareSetup";
 import { WelcomeTutorial } from "@/components/dashboard/WelcomeTutorial";
 import { MerchantControlPanel } from "@/components/dashboard/MerchantControlPanel";
+import { CustomQuestionsEditor } from "@/components/dashboard/CustomQuestionsEditor";
 import { BroadcastBanner } from "@/components/dashboard/BroadcastBanner";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +29,8 @@ interface StoreData {
   operating_hours?: any;
   store_status?: string;
   whatsapp_enabled?: boolean;
+  custom_queries?: any;
+  query_status?: string;
 }
 
 interface SubData {
@@ -113,7 +116,7 @@ export default function Dashboard() {
     if (!user) return;
     const fetchData = async () => {
       const [storesRes, subsRes, auditsRes] = await Promise.all([
-        supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status, whatsapp_enabled").eq("user_id", user.id),
+        supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status, whatsapp_enabled, custom_queries, query_status").eq("user_id", user.id),
         supabase.from("subscriptions").select("id, tier, status, price_sar").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1),
         supabase.from("analytics_logs").select("id, store_id, score, status, summary, result, observations, ai_reasoning, confidence_score, created_at, disputed").order("created_at", { ascending: false }).limit(100),
       ]);
@@ -490,13 +493,29 @@ export default function Dashboard() {
 
         {/* ── 6. MERCHANT CONTROL PANEL ── */}
         {stores.length > 0 && subscription && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {stores.map(s => (
+                <MerchantControlPanel key={s.id}
+                  store={{ id: s.id, name: s.name, is_active: s.is_active, operating_hours: s.operating_hours, whatsapp_enabled: s.whatsapp_enabled }}
+                  subscriptionTier={subscription.tier}
+                  onUpdate={() => {
+                    if (user) supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status, whatsapp_enabled, custom_queries, query_status").eq("user_id", user.id).then(({ data }) => { if (data) setStores(data); });
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* ── 7. CUSTOM QUESTIONS EDITOR ── */}
             {stores.map(s => (
-              <MerchantControlPanel key={s.id}
-                store={{ id: s.id, name: s.name, is_active: s.is_active, operating_hours: s.operating_hours, whatsapp_enabled: s.whatsapp_enabled }}
-                subscriptionTier={subscription.tier}
-                onUpdate={() => {
-                  if (user) supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status, whatsapp_enabled").eq("user_id", user.id).then(({ data }) => { if (data) setStores(data); });
+              <CustomQuestionsEditor
+                key={`q-${s.id}`}
+                storeId={s.id}
+                initialQueries={s.custom_queries}
+                queryStatus={s.query_status || "approved"}
+                isAdmin={false}
+                onSave={() => {
+                  if (user) supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status, whatsapp_enabled, custom_queries, query_status").eq("user_id", user.id).then(({ data }) => { if (data) setStores(data); });
                 }}
               />
             ))}

@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   Server, Activity, Wifi, WifiOff, Clock, Eye, Store, AlertTriangle,
   MessageSquare, RefreshCw, Pause, Play, Bug, Zap, Upload, Terminal,
-  CheckCircle, XCircle, Edit3, Save, Camera
+  CheckCircle, XCircle, Edit3, Save, Camera, MessageSquareText
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
@@ -19,6 +19,7 @@ import { StatCardSkeleton, TableSkeleton } from "@/components/ui/carbon-skeleton
 import TicketChat from "@/components/tickets/TicketChat";
 import { BroadcastBanner } from "@/components/dashboard/BroadcastBanner";
 import { OnboardingQueue } from "@/components/dashboard/OnboardingQueue";
+import { CustomQuestionsEditor } from "@/components/dashboard/CustomQuestionsEditor";
 interface StoreHealth {
   id: string;
   name: string;
@@ -39,6 +40,9 @@ interface StoreHealth {
   status: "online" | "warning" | "offline";
   owner_name: string;
   owner_email: string;
+  custom_queries?: any;
+  query_status?: string;
+  operating_hours?: any;
 }
 
 interface AuditLog {
@@ -76,7 +80,7 @@ export default function ITDashboard() {
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [storeNames, setStoreNames] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState<"waitlist" | "new_requests" | "heartbeat" | "logs" | "tickets" | "debug">("waitlist");
+  const [activeTab, setActiveTab] = useState<"waitlist" | "new_requests" | "heartbeat" | "logs" | "tickets" | "debug" | "questions">("waitlist");
   const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null);
   const [syncStatuses] = useState<SyncStatus[]>([]);
   const [debugLogs, setDebugLogs] = useState<any[]>([]);
@@ -105,7 +109,7 @@ export default function ITDashboard() {
 
   const fetchData = async () => {
     const [storesRes, logsRes, ticketsRes, debugRes, profilesRes] = await Promise.all([
-      supabase.from("stores").select("id, name, user_id, is_active, store_status, hardware_choice, rtsp_url, camera_username, camera_password, remote_command, debug_mode, it_review_notes, reviewed_by, reviewed_at"),
+      supabase.from("stores").select("id, name, user_id, is_active, store_status, hardware_choice, rtsp_url, camera_username, camera_password, remote_command, debug_mode, it_review_notes, reviewed_by, reviewed_at, custom_queries, query_status, operating_hours"),
       supabase.from("analytics_logs").select("id, store_id, score, status, summary, disputed, ai_reasoning, confidence_score, created_at").order("created_at", { ascending: false }).limit(100),
       supabase.from("support_tickets").select("*").order("created_at", { ascending: false }).limit(50),
       supabase.from("system_logs").select("*").order("created_at", { ascending: false }).limit(50),
@@ -155,6 +159,9 @@ export default function ITDashboard() {
         status,
         owner_name: ownerProfile?.name || "غير معروف",
         owner_email: ownerProfile?.email || "",
+        custom_queries: s.custom_queries,
+        query_status: s.query_status,
+        operating_hours: s.operating_hours,
       };
     });
     setStoreHealths(healthList);
@@ -270,10 +277,13 @@ export default function ITDashboard() {
 
   const queueStores = storeHealths.filter(s => s.store_status === "pending_review" || s.store_status === "draft");
 
+  const questionsStores = storeHealths.filter(s => s.store_status === "active");
+
   const tabs = [
     { id: "waitlist" as const, label: `قائمة الانتظار (${queueStores.length})`, icon: Zap },
     { id: "new_requests" as const, label: `طلبات جديدة (${newRequests.length})`, icon: Store },
     { id: "heartbeat" as const, label: "المحركات النشطة", icon: Activity },
+    { id: "questions" as const, label: `الأسئلة (${questionsStores.length})`, icon: MessageSquareText },
     { id: "logs" as const, label: `السجلات ${disputedCount > 0 ? `(${disputedCount} طعن)` : ""}`, icon: Eye },
     { id: "tickets" as const, label: `التذاكر (${openTickets})`, icon: MessageSquare },
     { id: "debug" as const, label: `التصحيح (${debugLogs.length})`, icon: Bug },
@@ -698,6 +708,42 @@ export default function ITDashboard() {
               </motion.div>
             ))}
             {tickets.length === 0 && <p className="text-center text-sm text-muted-foreground py-8 font-arabic">لا توجد تذاكر</p>}
+          </div>
+        )}
+
+        {/* ══════ Questions Management Tab ══════ */}
+        {activeTab === "questions" && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquareText className="w-5 h-5 text-primary" />
+              <h2 className="text-base font-semibold text-foreground font-arabic">إدارة أسئلة التدقيق — تحكم كامل</h2>
+            </div>
+            <p className="text-xs text-muted-foreground font-arabic">يمكنك الموافقة أو رفض أو تعديل أسئلة كل متجر. فقط الأسئلة المفعّلة تُرسل لمحرك الذكاء الاصطناعي.</p>
+            {questionsStores.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground text-sm font-arabic">
+                <MessageSquareText className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                لا توجد متاجر نشطة لإدارة أسئلتها
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {questionsStores.map(store => (
+                  <div key={store.id} className="space-y-2">
+                    <div className="flex items-center gap-2 px-1">
+                      <Store className="w-3.5 h-3.5 text-accent" />
+                      <span className="text-xs font-bold text-foreground font-arabic">{store.name}</span>
+                      <span className="text-[10px] text-muted-foreground font-arabic">— {store.owner_name}</span>
+                    </div>
+                    <CustomQuestionsEditor
+                      storeId={store.id}
+                      initialQueries={store.custom_queries}
+                      queryStatus={store.query_status || "approved"}
+                      isAdmin={true}
+                      onSave={fetchData}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
