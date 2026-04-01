@@ -3,19 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Store, Eye, Cpu, Clock, Rocket, Camera, ClipboardCheck, CreditCard,
-  TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, XCircle, Wifi, WifiOff,
-  ChevronDown, ChevronUp
+  TrendingUp, AlertTriangle, Wifi, WifiOff
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
 import HardwareSetup from "@/components/dashboard/HardwareSetup";
 import { WelcomeTutorial } from "@/components/dashboard/WelcomeTutorial";
-import { MerchantControlPanel } from "@/components/dashboard/MerchantControlPanel";
-import { CustomQuestionsEditor } from "@/components/dashboard/CustomQuestionsEditor";
 import { BroadcastBanner } from "@/components/dashboard/BroadcastBanner";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { StatCardSkeleton, TableSkeleton } from "@/components/ui/carbon-skeleton";
 import { Button } from "@/components/ui/button";
@@ -26,11 +22,7 @@ interface StoreData {
   name: string;
   hardware_choice: string | null;
   is_active: boolean | null;
-  operating_hours?: any;
   store_status?: string;
-  whatsapp_enabled?: boolean;
-  custom_queries?: any;
-  query_status?: string;
 }
 
 interface SubData {
@@ -48,15 +40,11 @@ interface AuditLog {
   summary: string | null;
   result: any;
   observations: any;
-  ai_reasoning: string | null;
-  confidence_score: number | null;
   created_at: string;
-  disputed?: boolean;
 }
 
 type DashState = "loading" | "no_subscription" | "pending_approval" | "active";
 
-// ── Relative time helper ──
 function timeAgo(dateStr: string): string {
   const now = Date.now();
   const diff = now - new Date(dateStr).getTime();
@@ -68,37 +56,24 @@ function timeAgo(dateStr: string): string {
   return `قبل ${Math.floor(hrs / 24)} يوم`;
 }
 
-// ── Extract Q&A pairs from observations/result ──
-function extractQA(entry: AuditLog): { question: string; answer: string; positive: boolean }[] {
+function extractQA(entry: AuditLog): { question: string; positive: boolean }[] {
   const src = entry.observations || entry.result;
   if (!src || typeof src !== "object") return [];
-  const pairs: { question: string; answer: string; positive: boolean }[] = [];
+  const pairs: { question: string; positive: boolean }[] = [];
   const positiveWords = ["نعم", "yes", "نظيف", "clean", "ممتاز", "جيد", "ملتزم", "موجود", "true"];
-
   if (Array.isArray(src)) {
     for (const item of src) {
       const q = item.question || item.q || "";
       const a = String(item.answer || item.a || item.result || "");
       if (!q && !a) continue;
-      pairs.push({ question: q, answer: a, positive: positiveWords.some(w => a.toLowerCase().includes(w)) });
+      pairs.push({ question: q, positive: positiveWords.some(w => a.toLowerCase().includes(w)) });
     }
   } else {
     for (const [k, v] of Object.entries(src)) {
-      const a = String(v);
-      pairs.push({ question: k, answer: a, positive: positiveWords.some(w => a.toLowerCase().includes(w)) });
+      pairs.push({ question: k, positive: positiveWords.some(w => String(v).toLowerCase().includes(w)) });
     }
   }
   return pairs;
-}
-
-// ── Check if audit has meaningful content for timeline ──
-function hasFindings(entry: AuditLog): boolean {
-  if (extractQA(entry).length > 0) return true;
-
-  const hasSummary = typeof entry.summary === "string" && entry.summary.trim().length > 0;
-  const hasScore = entry.score !== null;
-
-  return hasSummary || hasScore;
 }
 
 export default function Dashboard() {
@@ -110,11 +85,6 @@ export default function Dashboard() {
   const [pendingSetupStore, setPendingSetupStore] = useState<StoreData | null>(null);
   const [audits, setAudits] = useState<AuditLog[]>([]);
   const [showWelcome, setShowWelcome] = useState(false);
-  const [expandedAudit, setExpandedAudit] = useState<string | null>(null);
-  const [auditPage, setAuditPage] = useState(0);
-  const [hasMoreAudits, setHasMoreAudits] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const PAGE_SIZE = 50;
 
   useEffect(() => {
     if (hasRole("super_owner")) { navigate("/admin", { replace: true }); return; }
@@ -124,15 +94,14 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
-      const storeIds: string[] = [];
-      const storesRes = await supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status, whatsapp_enabled, custom_queries, query_status").eq("user_id", user.id);
+      const storesRes = await supabase.from("stores").select("id, name, hardware_choice, is_active, store_status").eq("user_id", user.id);
       const storesData = storesRes.data || [];
-      storesData.forEach(s => storeIds.push(s.id));
+      const storeIds = storesData.map(s => s.id);
 
       const [subsRes, auditsRes] = await Promise.all([
         supabase.from("subscriptions").select("id, tier, status, price_sar").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1),
         storeIds.length > 0
-          ? supabase.from("analytics_logs").select("id, store_id, score, status, summary, result, observations, ai_reasoning, confidence_score, created_at, disputed").in("store_id", storeIds).order("created_at", { ascending: false }).range(0, PAGE_SIZE - 1)
+          ? supabase.from("analytics_logs").select("id, store_id, score, status, summary, result, observations, created_at").in("store_id", storeIds).order("created_at", { ascending: false }).limit(30)
           : Promise.resolve({ data: [], error: null }),
       ]);
 
@@ -148,39 +117,18 @@ export default function Dashboard() {
       if (!localStorage.getItem(tutorialKey)) { setShowWelcome(true); localStorage.setItem(tutorialKey, "1"); }
       const needsSetup = storesData.find((s) => !s.hardware_choice);
       if (needsSetup) setPendingSetupStore(needsSetup);
-      const auditData = (auditsRes as any).data || [];
-      setAudits(auditData as AuditLog[]);
-      setHasMoreAudits(auditData.length === PAGE_SIZE);
+      setAudits((auditsRes as any).data || []);
     };
     fetchData();
   }, [user]);
 
-  // Load more audits
-  const loadMoreAudits = async () => {
-    if (!user || loadingMore || !hasMoreAudits) return;
-    setLoadingMore(true);
-    const storeIds = stores.map(s => s.id);
-    const from = (auditPage + 1) * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
-    const { data } = await supabase.from("analytics_logs")
-      .select("id, store_id, score, status, summary, result, observations, ai_reasoning, confidence_score, created_at, disputed")
-      .in("store_id", storeIds).order("created_at", { ascending: false }).range(from, to);
-    if (data) {
-      setAudits(prev => [...prev, ...(data as AuditLog[])]);
-      setHasMoreAudits(data.length === PAGE_SIZE);
-      setAuditPage(p => p + 1);
-    }
-    setLoadingMore(false);
-  };
-
-  // Realtime — filtered per store
+  // Realtime
   useEffect(() => {
     if (!user || dashState !== "active" || stores.length === 0) return;
     const channels = stores.map(s =>
-      supabase
-        .channel(`live-audits-${s.id}`)
+      supabase.channel(`dash-live-${s.id}`)
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_logs", filter: `store_id=eq.${s.id}` }, (payload) => {
-          setAudits((prev) => [payload.new as AuditLog, ...prev].slice(0, PAGE_SIZE * (auditPage + 1)));
+          setAudits(prev => [payload.new as AuditLog, ...prev].slice(0, 30));
         })
         .subscribe()
     );
@@ -189,20 +137,14 @@ export default function Dashboard() {
 
   const displayName = profile?.full_name || user?.email?.split("@")[0] || "التاجر";
 
-  // ── Derived data ──
-  const todayStart = useMemo(() => {
-    const d = new Date(); d.setHours(0, 0, 0, 0); return d;
-  }, []);
-
-  const todayAudits = useMemo(() => audits.filter(a => new Date(a.created_at) >= todayStart), [audits, todayStart]);
-  const todayWithFindings = useMemo(() => todayAudits.filter(hasFindings), [todayAudits]);
+  const todayStart = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
+  const todayAudits = useMemo(() => audits.filter(a => new Date(a.created_at) >= todayStart && a.score !== null), [audits, todayStart]);
 
   const avgScore = useMemo(() => {
-    const scored = todayAudits.filter(a => a.score !== null);
-    return scored.length > 0 ? Math.round(scored.reduce((s, a) => s + (a.score || 0), 0) / scored.length) : 0;
+    if (todayAudits.length === 0) return 0;
+    return Math.round(todayAudits.reduce((s, a) => s + (a.score || 0), 0) / todayAudits.length);
   }, [todayAudits]);
 
-  // Most frequent failed question today
   const topFailure = useMemo(() => {
     const failCounts: Record<string, number> = {};
     let totalAudits = 0;
@@ -210,9 +152,7 @@ export default function Dashboard() {
       const qa = extractQA(a);
       if (qa.length > 0) totalAudits++;
       for (const { question, positive } of qa) {
-        if (!positive && question) {
-          failCounts[question] = (failCounts[question] || 0) + 1;
-        }
+        if (!positive && question) failCounts[question] = (failCounts[question] || 0) + 1;
       }
     }
     const sorted = Object.entries(failCounts).sort((a, b) => b[1] - a[1]);
@@ -220,25 +160,15 @@ export default function Dashboard() {
     return { question: sorted[0][0], count: sorted[0][1], total: totalAudits };
   }, [todayAudits]);
 
-  // 24h chart data
   const chartData = useMemo(() => {
-    const scored = todayAudits.filter(a => a.score !== null).reverse();
-    return scored.map(a => ({
+    return todayAudits.slice().reverse().map(a => ({
       time: new Date(a.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
       score: a.score || 0,
     }));
   }, [todayAudits]);
 
-  // Latest audit for Live Pulse
   const latestAudit = audits.length > 0 ? audits[0] : null;
   const isConnected = latestAudit ? (Date.now() - new Date(latestAudit.created_at).getTime()) < 30 * 60 * 1000 : false;
-
-  const handleDispute = async (auditId: string) => {
-    const { error } = await supabase.from("analytics_logs").update({ disputed: true }).eq("id", auditId);
-    if (error) { toast.error("خطأ في تسجيل الطعن"); return; }
-    toast.success("تم تسجيل الطعن — سيراجعها الفريق التقني");
-    setAudits(prev => prev.map(a => a.id === auditId ? { ...a, disputed: true } : a));
-  };
 
   // ── Loading ──
   if (dashState === "loading") {
@@ -249,7 +179,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[1, 2, 3].map(i => <StatCardSkeleton key={i} />)}
           </div>
-          <TableSkeleton rows={5} />
+          <TableSkeleton rows={3} />
         </div>
       </DashboardLayout>
     );
@@ -317,10 +247,8 @@ export default function Dashboard() {
   }
 
   // ══════════════════════════════════════════════════
-  // ═══  ACTIVE DASHBOARD — Decision-Making Tool  ═══
+  // ═══  ACTIVE DASHBOARD — Overview Only          ═══
   // ══════════════════════════════════════════════════
-
-  const storeNameMap = Object.fromEntries(stores.map(s => [s.id, s.name]));
 
   return (
     <DashboardLayout>
@@ -369,28 +297,34 @@ export default function Dashboard() {
             ملخص الـ 24 ساعة الماضية
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <StatCard icon={Eye} label="جولات اليوم" value={String(todayWithFindings.length)} numericValue={todayWithFindings.length} change={todayWithFindings.length > 0 ? "جولة مع نتائج" : "بانتظار البيانات"} changeType={todayWithFindings.length > 0 ? "positive" : "neutral"} glowColor="blue" />
-            <StatCard icon={TrendingUp} label="نسبة الانضباط" value={avgScore > 0 ? `${avgScore}%` : "--"} numericValue={avgScore > 0 ? avgScore : undefined} change={avgScore >= 80 ? "أداء ممتاز" : avgScore > 0 ? "يحتاج تحسين" : "لا توجد بيانات"} changeType={avgScore >= 80 ? "positive" : avgScore > 0 ? "negative" : "neutral"} glowColor={avgScore >= 80 ? "emerald" : "gold"} />
-            <StatCard icon={Cpu} label="الأجهزة" value={stores.filter(s => s.hardware_choice).length + "/" + stores.length} change={pendingSetupStore ? "يحتاج إعداد" : "مكتمل"} changeType={pendingSetupStore ? "negative" : "positive"} glowColor="blue" />
+            <StatCard icon={Eye} label="جولات اليوم" value={String(todayAudits.length)} numericValue={todayAudits.length}
+              change={todayAudits.length > 0 ? "جولة مع نتائج" : "بانتظار البيانات"} changeType={todayAudits.length > 0 ? "positive" : "neutral"} glowColor="blue" />
+            <StatCard icon={TrendingUp} label="نسبة الانضباط" value={avgScore > 0 ? `${avgScore}%` : "--"} numericValue={avgScore > 0 ? avgScore : undefined}
+              change={avgScore >= 80 ? "أداء ممتاز" : avgScore > 0 ? "يحتاج تحسين" : "لا توجد بيانات"} changeType={avgScore >= 80 ? "positive" : avgScore > 0 ? "negative" : "neutral"} glowColor={avgScore >= 80 ? "emerald" : "gold"} />
+            <StatCard icon={Cpu} label="الأجهزة" value={stores.filter(s => s.hardware_choice).length + "/" + stores.length}
+              change={pendingSetupStore ? "يحتاج إعداد" : "مكتمل"} changeType={pendingSetupStore ? "negative" : "positive"} glowColor="blue" />
           </div>
         </div>
 
         {pendingSetupStore && (
           <HardwareSetup storeId={pendingSetupStore.id} onComplete={() => {
             setPendingSetupStore(null);
-            if (user) supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status, whatsapp_enabled").eq("user_id", user.id).then(({ data }) => { if (data) setStores(data); });
+            if (user) supabase.from("stores").select("id, name, hardware_choice, is_active, store_status").eq("user_id", user.id).then(({ data }) => { if (data) setStores(data); });
           }} />
         )}
 
-        {/* ── 3. ACTIONABLE INSIGHTS ── */}
+        {/* ── 3. ACTIONABLE INSIGHT ── */}
         {topFailure && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             className="rounded-xl bg-destructive/5 border border-destructive/20 p-4 flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-destructive mt-0.5 shrink-0" />
-            <div>
+            <div className="flex-1">
               <p className="text-sm font-bold text-foreground font-arabic">أبرز مخالفة متكررة اليوم</p>
               <p className="text-sm text-muted-foreground font-arabic mt-1">
-                "{topFailure.question}" — تم رصدها في <span className="text-destructive font-bold">{topFailure.count}</span> من أصل <span className="font-bold">{topFailure.total}</span> جولة اليوم
+                "{topFailure.question}" — تم رصدها في <span className="text-destructive font-bold">{topFailure.count}</span> من أصل <span className="font-bold">{topFailure.total}</span> جولة
+              </p>
+              <p className="text-xs text-primary font-arabic mt-2">
+                💡 {topFailure.count / topFailure.total >= 0.5 ? "مشكلة متكررة — أضفها لقائمة المراجعة اليومية" : "ملاحظة عرضية — تابعها خلال الأيام القادمة"}
               </p>
             </div>
           </motion.div>
@@ -427,143 +361,23 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        {/* ── 5. AUDIT TIMELINE ── */}
-        <div>
-          <h2 className="text-lg font-bold text-foreground font-arabic mb-3 flex items-center gap-2">
-            <ClipboardCheck className="w-4 h-4 text-primary" />
-            الخط الزمني للجولات
-          </h2>
-
-          {todayWithFindings.length === 0 ? (
-            <div className="rounded-xl bg-card border border-border p-8 text-center">
-              <Eye className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-30" />
-              <p className="text-sm text-muted-foreground font-arabic">لا توجد جولات بنتائج حتى الآن اليوم</p>
+        {/* ── 5. QUICK LINKS ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Button variant="outline" className="h-auto py-4 flex items-center gap-3 justify-start font-arabic" onClick={() => navigate("/dashboard/audit")}>
+            <ClipboardCheck className="w-5 h-5 text-primary" />
+            <div className="text-right">
+              <p className="text-sm font-semibold">تقارير التدقيق</p>
+              <p className="text-[10px] text-muted-foreground">عرض جميع الجولات مع التوصيات</p>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {todayWithFindings.slice(0, 10).map((audit) => {
-                const qa = extractQA(audit);
-                const positiveCount = qa.filter(q => q.positive).length;
-                const negativeCount = qa.filter(q => !q.positive).length;
-                const isExpanded = expandedAudit === audit.id;
-                const storeName = storeNameMap[audit.store_id] || "المتجر";
-
-                return (
-                  <motion.div key={audit.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                    className={`rounded-xl border p-4 transition-all cursor-pointer ${
-                      (audit.score || 0) >= 80 ? "bg-emerald/5 border-emerald/20" :
-                      (audit.score || 0) >= 50 ? "bg-accent/5 border-accent/20" :
-                      "bg-destructive/5 border-destructive/20"
-                    }`}
-                    onClick={() => setExpandedAudit(isExpanded ? null : audit.id)}>
-
-                    {/* Header */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full shrink-0 ${
-                          (audit.score || 0) >= 80 ? "bg-emerald" :
-                          (audit.score || 0) >= 50 ? "bg-accent" : "bg-destructive"
-                        }`} />
-                        <div>
-                          <span className="text-xs text-muted-foreground font-arabic">{timeAgo(audit.created_at)} — {storeName}</span>
-                          <p className="text-sm font-semibold text-foreground font-arabic mt-0.5">
-                            {audit.summary || (negativeCount > 0 ? `تم رصد ${negativeCount} ملاحظة` : "العمليات ممتازة")}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {audit.score !== null && (
-                          <span className={`text-lg font-bold font-mono ${
-                            audit.score >= 80 ? "text-emerald" :
-                            audit.score >= 50 ? "text-accent" : "text-destructive"
-                          }`}>{audit.score}%</span>
-                        )}
-                        {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                      </div>
-                    </div>
-
-                    {/* Quick count */}
-                    <div className="flex items-center gap-3 mt-2 text-xs">
-                      {positiveCount > 0 && (
-                        <span className="flex items-center gap-1 text-emerald">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> {positiveCount} إيجابي
-                        </span>
-                      )}
-                      {negativeCount > 0 && (
-                        <span className="flex items-center gap-1 text-destructive">
-                          <XCircle className="w-3.5 h-3.5" /> {negativeCount} سلبي
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Expanded Q&A */}
-                    {isExpanded && (
-                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
-                        className="mt-4 pt-3 border-t border-border space-y-2">
-                        {qa.map((item, i) => (
-                          <div key={i} className="flex items-start justify-between gap-2 py-1.5">
-                            <span className="text-sm text-muted-foreground font-arabic flex-1">{item.question}</span>
-                            <span className={`text-sm font-bold font-arabic shrink-0 flex items-center gap-1 ${item.positive ? "text-emerald" : "text-destructive"}`}>
-                              {item.positive ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
-                              {item.answer}
-                            </span>
-                          </div>
-                        ))}
-                        {!audit.disputed && (
-                          <Button size="sm" variant="outline" className="mt-2 text-xs font-arabic border-accent/30 text-accent hover:bg-accent/10"
-                            onClick={(e) => { e.stopPropagation(); handleDispute(audit.id); }}>
-                            الطعن في هذه النتيجة
-                          </Button>
-                        )}
-                        {audit.disputed && (
-                          <span className="text-xs text-accent font-arabic">✓ تم تسجيل الطعن</span>
-                        )}
-                      </motion.div>
-                    )}
-                  </motion.div>
-                );
-              })}
-              {hasMoreAudits && (
-                <div className="text-center pt-2">
-                  <Button variant="outline" size="sm" className="font-arabic text-xs" onClick={loadMoreAudits} disabled={loadingMore}>
-                    {loadingMore ? "جاري التحميل..." : "عرض المزيد"}
-                  </Button>
-                </div>
-              )}
+          </Button>
+          <Button variant="outline" className="h-auto py-4 flex items-center gap-3 justify-start font-arabic" onClick={() => navigate("/dashboard/store-control")}>
+            <Store className="w-5 h-5 text-primary" />
+            <div className="text-right">
+              <p className="text-sm font-semibold">تحكم المتجر</p>
+              <p className="text-[10px] text-muted-foreground">ساعات العمل والأسئلة المخصصة</p>
             </div>
-          )}
+          </Button>
         </div>
-
-        {/* ── 6. MERCHANT CONTROL PANEL ── */}
-        {stores.length > 0 && subscription && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4">
-              {stores.map(s => (
-                <MerchantControlPanel key={s.id}
-                  store={{ id: s.id, name: s.name, is_active: s.is_active, operating_hours: s.operating_hours, whatsapp_enabled: s.whatsapp_enabled }}
-                  subscriptionTier={subscription.tier}
-                  onUpdate={() => {
-                    if (user) supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status, whatsapp_enabled, custom_queries, query_status").eq("user_id", user.id).then(({ data }) => { if (data) setStores(data); });
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* ── 7. CUSTOM QUESTIONS EDITOR ── */}
-            {stores.map(s => (
-              <CustomQuestionsEditor
-                key={`q-${s.id}`}
-                storeId={s.id}
-                initialQueries={s.custom_queries}
-                queryStatus={s.query_status || "approved"}
-                isAdmin={false}
-                onSave={() => {
-                  if (user) supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status, whatsapp_enabled, custom_queries, query_status").eq("user_id", user.id).then(({ data }) => { if (data) setStores(data); });
-                }}
-              />
-            ))}
-          </div>
-        )}
       </div>
     </DashboardLayout>
   );
