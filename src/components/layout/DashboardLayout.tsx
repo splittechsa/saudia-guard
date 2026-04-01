@@ -12,8 +12,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 const navItems = [
   { icon: LayoutDashboard, label: "نظرة عامة", path: "/dashboard" },
-  { icon: Camera, label: "إعداد المتجر", path: "/dashboard/store-setup" },
   { icon: Activity, label: "التدقيقات", path: "/dashboard/audit" },
+  { icon: Sliders, label: "تحكم المتجر", path: "/dashboard/store-control" },
+  { icon: Camera, label: "إعداد المتجر", path: "/dashboard/store-setup" },
   { icon: MessageSquare, label: "الدعم الفني", path: "/support" },
   { icon: Settings, label: "الإعدادات", path: "/dashboard/settings" },
 ];
