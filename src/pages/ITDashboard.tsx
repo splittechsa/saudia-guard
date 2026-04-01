@@ -19,6 +19,7 @@ import { StatCardSkeleton, TableSkeleton } from "@/components/ui/carbon-skeleton
 import TicketChat from "@/components/tickets/TicketChat";
 import { BroadcastBanner } from "@/components/dashboard/BroadcastBanner";
 import { OnboardingQueue } from "@/components/dashboard/OnboardingQueue";
+import { CustomQuestionsEditor } from "@/components/dashboard/CustomQuestionsEditor";
 interface StoreHealth {
   id: string;
   name: string;
