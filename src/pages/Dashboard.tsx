@@ -11,6 +11,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import HardwareSetup from "@/components/dashboard/HardwareSetup";
 import { WelcomeTutorial } from "@/components/dashboard/WelcomeTutorial";
 import { MerchantControlPanel } from "@/components/dashboard/MerchantControlPanel";
+import { CustomQuestionsEditor } from "@/components/dashboard/CustomQuestionsEditor";
 import { BroadcastBanner } from "@/components/dashboard/BroadcastBanner";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
