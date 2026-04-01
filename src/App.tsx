@@ -16,7 +16,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import SLA from "./pages/SLA";
 import Support from "./pages/Support";
-import Reports from "./pages/Reports";
+
 import StoreSetup from "./pages/StoreSetup";
 import SystemStatus from "./pages/SystemStatus";
 import Settings from "./pages/Settings";
