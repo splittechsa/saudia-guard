@@ -294,25 +294,25 @@ export default function Dashboard() {
 
         {/* ── 1. LIVE PULSE BAR ── */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl bg-card border border-border p-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+          className="rounded-xl bg-card border border-border p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             {isConnected ? (
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald animate-pulse" />
                 <Wifi className="w-4 h-4 text-emerald" />
-                <span className="text-sm font-semibold text-emerald font-arabic">المحل متصل</span>
+                <span className="text-xs sm:text-sm font-semibold text-emerald font-arabic">المحل متصل</span>
               </div>
             ) : (
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-destructive" />
                 <WifiOff className="w-4 h-4 text-destructive" />
-                <span className="text-sm font-semibold text-destructive font-arabic">المحل غير متصل</span>
+                <span className="text-xs sm:text-sm font-semibold text-destructive font-arabic">المحل غير متصل</span>
               </div>
             )}
           </div>
           {latestAudit && (
-            <div className="flex items-center gap-3 text-xs">
-              <span className="text-muted-foreground font-arabic">آخر جولة: {timeAgo(latestAudit.created_at)}</span>
+            <div className="flex items-center gap-2 sm:gap-3 text-xs">
+              <span className="text-muted-foreground font-arabic text-[10px] sm:text-xs">آخر جولة: {timeAgo(latestAudit.created_at)}</span>
               {latestAudit.score !== null && (
                 <Badge variant="outline" className={`text-[10px] font-mono ${
                   latestAudit.score >= 80 ? "text-emerald border-emerald/30" :
