@@ -332,7 +332,7 @@ export default function Dashboard() {
             <Clock className="w-4 h-4 text-primary" />
             ملخص الـ 24 ساعة الماضية
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <StatCard icon={Eye} label="جولات اليوم" value={String(todayWithFindings.length)} numericValue={todayWithFindings.length} change={todayWithFindings.length > 0 ? "جولة مع نتائج" : "بانتظار البيانات"} changeType={todayWithFindings.length > 0 ? "positive" : "neutral"} glowColor="blue" />
             <StatCard icon={TrendingUp} label="نسبة الانضباط" value={avgScore > 0 ? `${avgScore}%` : "--"} numericValue={avgScore > 0 ? avgScore : undefined} change={avgScore >= 80 ? "أداء ممتاز" : avgScore > 0 ? "يحتاج تحسين" : "لا توجد بيانات"} changeType={avgScore >= 80 ? "positive" : avgScore > 0 ? "negative" : "neutral"} glowColor={avgScore >= 80 ? "emerald" : "gold"} />
             <StatCard icon={Cpu} label="الأجهزة" value={stores.filter(s => s.hardware_choice).length + "/" + stores.length} change={pendingSetupStore ? "يحتاج إعداد" : "مكتمل"} changeType={pendingSetupStore ? "negative" : "positive"} glowColor="blue" />
