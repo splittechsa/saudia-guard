@@ -94,21 +94,21 @@ export default function DashboardLayout({ children, isAdmin = false }: { childre
 
   return (
     <div className="flex min-h-screen bg-background" dir="rtl">
-      {/* Desktop sidebar - only on non-mobile */}
-      {!isMobile && (
-        <motion.aside animate={{ width: collapsed ? 72 : 260 }} className="fixed right-0 top-0 h-full z-50 glass-strong flex-col hidden md:flex">
-          <SidebarContent items={items} collapsed={collapsed} location={location} handleSignOut={handleSignOut} setCollapsed={setCollapsed} isMobile={false} onNavClick={() => {}} />
-        </motion.aside>
+      {/* Desktop sidebar - CSS-only visibility */}
+      <motion.aside animate={{ width: collapsed ? 72 : 260 }} className="fixed right-0 top-0 h-full z-50 glass-strong flex-col hidden md:flex">
+        <SidebarContent items={items} collapsed={collapsed} location={location} handleSignOut={handleSignOut} setCollapsed={setCollapsed} isMobile={false} onNavClick={() => {}} />
+      </motion.aside>
+
+      {/* Mobile sidebar via Sheet - only rendered on mobile */}
+      {isMobile && (
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetContent side="right" className="w-[280px] p-0 glass-strong flex flex-col">
+            <SidebarContent items={items} collapsed={false} location={location} handleSignOut={handleSignOut} setCollapsed={() => {}} isMobile={true} onNavClick={() => setMobileOpen(false)} />
+          </SheetContent>
+        </Sheet>
       )}
 
-      {/* Mobile sidebar via Sheet */}
-      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="right" className="w-[280px] p-0 glass-strong flex flex-col md:hidden">
-          <SidebarContent items={items} collapsed={false} location={location} handleSignOut={handleSignOut} setCollapsed={() => {}} isMobile={true} onNavClick={() => setMobileOpen(false)} />
-        </SheetContent>
-      </Sheet>
-
-      <div className={`flex-1 transition-all ${isMobile ? "" : collapsed ? "mr-[72px]" : "mr-[260px]"}`}>
+      <div className={`flex-1 transition-all md:${collapsed ? "mr-[72px]" : "mr-[260px]"}`}>
         <header className="sticky top-0 z-40 glass-strong border-b border-border">
           <div className="flex items-center justify-between px-4 sm:px-6 py-3">
             <div className="flex items-center gap-3">
