@@ -111,6 +111,10 @@ export default function Dashboard() {
   const [audits, setAudits] = useState<AuditLog[]>([]);
   const [showWelcome, setShowWelcome] = useState(false);
   const [expandedAudit, setExpandedAudit] = useState<string | null>(null);
+  const [auditPage, setAuditPage] = useState(0);
+  const [hasMoreAudits, setHasMoreAudits] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const PAGE_SIZE = 50;
 
   useEffect(() => {
     if (hasRole("super_owner")) { navigate("/admin", { replace: true }); return; }
@@ -120,13 +124,18 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
-      const [storesRes, subsRes, auditsRes] = await Promise.all([
-        supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status, whatsapp_enabled, custom_queries, query_status").eq("user_id", user.id),
+      const storeIds: string[] = [];
+      const storesRes = await supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status, whatsapp_enabled, custom_queries, query_status").eq("user_id", user.id);
+      const storesData = storesRes.data || [];
+      storesData.forEach(s => storeIds.push(s.id));
+
+      const [subsRes, auditsRes] = await Promise.all([
         supabase.from("subscriptions").select("id, tier, status, price_sar").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1),
-        supabase.from("analytics_logs").select("id, store_id, score, status, summary, result, observations, ai_reasoning, confidence_score, created_at, disputed").order("created_at", { ascending: false }).limit(100),
+        storeIds.length > 0
+          ? supabase.from("analytics_logs").select("id, store_id, score, status, summary, result, observations, ai_reasoning, confidence_score, created_at, disputed").in("store_id", storeIds).order("created_at", { ascending: false }).range(0, PAGE_SIZE - 1)
+          : Promise.resolve({ data: [], error: null }),
       ]);
 
-      const storesData = storesRes.data || [];
       const subData = subsRes.data?.[0] || null;
       setStores(storesData);
       setSubscription(subData);
@@ -139,22 +148,44 @@ export default function Dashboard() {
       if (!localStorage.getItem(tutorialKey)) { setShowWelcome(true); localStorage.setItem(tutorialKey, "1"); }
       const needsSetup = storesData.find((s) => !s.hardware_choice);
       if (needsSetup) setPendingSetupStore(needsSetup);
-      if (auditsRes.data) setAudits(auditsRes.data as AuditLog[]);
+      const auditData = (auditsRes as any).data || [];
+      setAudits(auditData as AuditLog[]);
+      setHasMoreAudits(auditData.length === PAGE_SIZE);
     };
     fetchData();
   }, [user]);
 
-  // Realtime
+  // Load more audits
+  const loadMoreAudits = async () => {
+    if (!user || loadingMore || !hasMoreAudits) return;
+    setLoadingMore(true);
+    const storeIds = stores.map(s => s.id);
+    const from = (auditPage + 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    const { data } = await supabase.from("analytics_logs")
+      .select("id, store_id, score, status, summary, result, observations, ai_reasoning, confidence_score, created_at, disputed")
+      .in("store_id", storeIds).order("created_at", { ascending: false }).range(from, to);
+    if (data) {
+      setAudits(prev => [...prev, ...(data as AuditLog[])]);
+      setHasMoreAudits(data.length === PAGE_SIZE);
+      setAuditPage(p => p + 1);
+    }
+    setLoadingMore(false);
+  };
+
+  // Realtime — filtered per store
   useEffect(() => {
-    if (!user || dashState !== "active") return;
-    const channel = supabase
-      .channel("live-audits")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_logs" }, (payload) => {
-        setAudits((prev) => [payload.new as AuditLog, ...prev].slice(0, 100));
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [user, dashState]);
+    if (!user || dashState !== "active" || stores.length === 0) return;
+    const channels = stores.map(s =>
+      supabase
+        .channel(`live-audits-${s.id}`)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_logs", filter: `store_id=eq.${s.id}` }, (payload) => {
+          setAudits((prev) => [payload.new as AuditLog, ...prev].slice(0, PAGE_SIZE * (auditPage + 1)));
+        })
+        .subscribe()
+    );
+    return () => { channels.forEach(ch => supabase.removeChannel(ch)); };
+  }, [user, dashState, stores]);
 
   const displayName = profile?.full_name || user?.email?.split("@")[0] || "التاجر";
 
@@ -492,6 +523,13 @@ export default function Dashboard() {
                   </motion.div>
                 );
               })}
+              {hasMoreAudits && (
+                <div className="text-center pt-2">
+                  <Button variant="outline" size="sm" className="font-arabic text-xs" onClick={loadMoreAudits} disabled={loadingMore}>
+                    {loadingMore ? "جاري التحميل..." : "عرض المزيد"}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>
