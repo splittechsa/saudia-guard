@@ -711,6 +711,42 @@ export default function ITDashboard() {
           </div>
         )}
 
+        {/* ══════ Questions Management Tab ══════ */}
+        {activeTab === "questions" && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquareText className="w-5 h-5 text-primary" />
+              <h2 className="text-base font-semibold text-foreground font-arabic">إدارة أسئلة التدقيق — تحكم كامل</h2>
+            </div>
+            <p className="text-xs text-muted-foreground font-arabic">يمكنك الموافقة أو رفض أو تعديل أسئلة كل متجر. فقط الأسئلة المفعّلة تُرسل لمحرك الذكاء الاصطناعي.</p>
+            {questionsStores.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground text-sm font-arabic">
+                <MessageSquareText className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                لا توجد متاجر نشطة لإدارة أسئلتها
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {questionsStores.map(store => (
+                  <div key={store.id} className="space-y-2">
+                    <div className="flex items-center gap-2 px-1">
+                      <Store className="w-3.5 h-3.5 text-accent" />
+                      <span className="text-xs font-bold text-foreground font-arabic">{store.name}</span>
+                      <span className="text-[10px] text-muted-foreground font-arabic">— {store.owner_name}</span>
+                    </div>
+                    <CustomQuestionsEditor
+                      storeId={store.id}
+                      initialQueries={store.custom_queries}
+                      queryStatus={store.query_status || "approved"}
+                      isAdmin={true}
+                      onSave={fetchData}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ══════ Debug Tab ══════ */}
         {activeTab === "debug" && (
           <div className="space-y-4">
