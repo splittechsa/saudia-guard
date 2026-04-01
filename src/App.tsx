@@ -22,6 +22,8 @@ import SystemStatus from "./pages/SystemStatus";
 import Settings from "./pages/Settings";
 import AppointmentBooking from "./pages/AppointmentBooking";
 import PostPaymentSuccess from "./pages/PostPaymentSuccess";
+import AuditReports from "./pages/AuditReports";
+import StoreControl from "./pages/StoreControl";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
