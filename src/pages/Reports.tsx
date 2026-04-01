@@ -382,7 +382,7 @@ export default function Reports() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-foreground font-arabic">نتائج الجولات — اضغط لعرض الأسئلة والأجوبة</h3>
-            <span className="text-[10px] text-muted-foreground font-mono">{filtered.length} تدقيق</span>
+            <span className="text-[10px] text-muted-foreground font-mono">{filtered.length} جولة</span>
           </div>
           {filtered.length === 0 ? (
             <div className="rounded-xl bg-card border border-border p-8 text-center text-muted-foreground text-sm font-arabic">
