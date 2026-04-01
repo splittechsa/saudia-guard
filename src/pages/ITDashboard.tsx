@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { StatCardSkeleton, TableSkeleton } from "@/components/ui/carbon-skeleton";
 import TicketChat from "@/components/tickets/TicketChat";
 import { BroadcastBanner } from "@/components/dashboard/BroadcastBanner";
-
+import { OnboardingQueue } from "@/components/dashboard/OnboardingQueue";
 interface StoreHealth {
   id: string;
   name: string;
@@ -76,7 +76,7 @@ export default function ITDashboard() {
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [storeNames, setStoreNames] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState<"new_requests" | "heartbeat" | "logs" | "tickets" | "debug">("new_requests");
+  const [activeTab, setActiveTab] = useState<"waitlist" | "new_requests" | "heartbeat" | "logs" | "tickets" | "debug">("waitlist");
   const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null);
   const [syncStatuses] = useState<SyncStatus[]>([]);
   const [debugLogs, setDebugLogs] = useState<any[]>([]);
@@ -268,7 +268,10 @@ export default function ITDashboard() {
     );
   }
 
+  const queueStores = storeHealths.filter(s => s.store_status === "pending_review" || s.store_status === "draft");
+
   const tabs = [
+    { id: "waitlist" as const, label: `قائمة الانتظار (${queueStores.length})`, icon: Zap },
     { id: "new_requests" as const, label: `طلبات جديدة (${newRequests.length})`, icon: Store },
     { id: "heartbeat" as const, label: "المحركات النشطة", icon: Activity },
     { id: "logs" as const, label: `السجلات ${disputedCount > 0 ? `(${disputedCount} طعن)` : ""}`, icon: Eye },
@@ -349,6 +352,24 @@ export default function ITDashboard() {
             </button>
           ))}
         </div>
+
+        {/* ══════ Waitlist Tab (Smart Onboarding Queue) ══════ */}
+        {activeTab === "waitlist" && (
+          <OnboardingQueue
+            stores={queueStores.map(s => ({
+              id: s.id,
+              name: s.name,
+              user_id: s.user_id,
+              store_status: s.store_status,
+              rtsp_url: s.rtsp_url,
+              hardware_choice: s.hardware_choice,
+              it_review_notes: s.it_review_notes,
+              owner_name: s.owner_name,
+              owner_email: s.owner_email,
+            }))}
+            onRefresh={fetchData}
+          />
+        )}
 
         {/* ══════ New Requests Tab (IT Gatekeeper) ══════ */}
         {activeTab === "new_requests" && (

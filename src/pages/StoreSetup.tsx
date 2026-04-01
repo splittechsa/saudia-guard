@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Camera, Wifi, Save, Eye, EyeOff, Send } from "lucide-react";
+import { Camera, Wifi, Save, Eye, EyeOff, Send, CalendarDays } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ interface Store {
 
 export default function StoreSetup() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [rtspUrl, setRtspUrl] = useState("");
@@ -257,6 +259,19 @@ export default function StoreSetup() {
                     ))}
                   </div>
                 </div>
+
+                {/* Appointment Booking CTA */}
+                {selectedStore.store_status !== "active" && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-xl bg-accent/5 border border-accent/20 p-5 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-foreground font-arabic">تحتاج مساعدة في الربط؟</p>
+                      <p className="text-xs text-muted-foreground font-arabic mt-0.5">احجز جلسة مع فريقنا التقني — سنربط الكاميرا لك عن بُعد</p>
+                    </div>
+                    <Button variant="outline" onClick={() => navigate("/dashboard/book-appointment")} className="font-arabic border-accent/30 text-accent hover:bg-accent/10">
+                      <CalendarDays className="w-4 h-4 me-2" /> حجز موعد
+                    </Button>
+                  </motion.div>
+                )}
 
                 {/* Camera Guide */}
                 <CameraGuide storeId={selectedStore.id} />
