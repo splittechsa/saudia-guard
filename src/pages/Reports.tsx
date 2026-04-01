@@ -112,9 +112,9 @@ export default function Reports() {
   }, [filtered]);
 
   const statusPieData = [
-    { name: "ناجح", value: stats.passed, color: "hsl(160, 84%, 39%)" },
-    { name: "تحذير", value: stats.warnings, color: "hsl(43, 76%, 53%)" },
-    { name: "فشل", value: stats.failed, color: "hsl(0, 84%, 60%)" },
+    { name: "فوق 80%", value: stats.passed, color: "hsl(160, 84%, 39%)" },
+    { name: "50%-80%", value: stats.warnings, color: "hsl(43, 76%, 53%)" },
+    { name: "تحت 50%", value: stats.failed, color: "hsl(0, 84%, 60%)" },
   ].filter((d) => d.value > 0);
 
   const exportCSV = () => {
