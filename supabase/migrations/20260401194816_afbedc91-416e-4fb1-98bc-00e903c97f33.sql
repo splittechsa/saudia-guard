@@ -1,0 +1,1 @@
+CREATE POLICY "Service role can delete logs" ON public.analytics_logs FOR DELETE TO service_role USING (true);
