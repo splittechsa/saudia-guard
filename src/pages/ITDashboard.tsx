@@ -353,6 +353,24 @@ export default function ITDashboard() {
           ))}
         </div>
 
+        {/* ══════ Waitlist Tab (Smart Onboarding Queue) ══════ */}
+        {activeTab === "waitlist" && (
+          <OnboardingQueue
+            stores={queueStores.map(s => ({
+              id: s.id,
+              name: s.name,
+              user_id: s.user_id,
+              store_status: s.store_status,
+              rtsp_url: s.rtsp_url,
+              hardware_choice: s.hardware_choice,
+              it_review_notes: s.it_review_notes,
+              owner_name: s.owner_name,
+              owner_email: s.owner_email,
+            }))}
+            onRefresh={fetchData}
+          />
+        )}
+
         {/* ══════ New Requests Tab (IT Gatekeeper) ══════ */}
         {activeTab === "new_requests" && (
           <div className="space-y-4">
