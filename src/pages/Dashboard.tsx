@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Rocket, Camera, ClipboardCheck, CreditCard, Clock,
-  Wifi, WifiOff, FileDown, CheckCircle2, XCircle, AlertTriangle
+  Wifi, WifiOff, FileDown
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import HardwareSetup from "@/components/dashboard/HardwareSetup";
@@ -12,7 +12,6 @@ import { BroadcastBanner } from "@/components/dashboard/BroadcastBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 interface StoreData {
   id: string;
@@ -53,22 +52,20 @@ function timeAgo(dateStr: string): string {
   return `قبل ${Math.floor(hrs / 24)} يوم`;
 }
 
-function extractQA(entry: AuditLog): { question: string; answer: string; positive: boolean }[] {
+function extractQA(entry: AuditLog): { question: string; answer: string }[] {
   const src = entry.observations || entry.result;
   if (!src || typeof src !== "object") return [];
-  const pairs: { question: string; answer: string; positive: boolean }[] = [];
-  const positiveWords = ["نعم", "yes", "نظيف", "clean", "ممتاز", "جيد", "ملتزم", "موجود", "true"];
+  const pairs: { question: string; answer: string }[] = [];
   if (Array.isArray(src)) {
     for (const item of src) {
       const q = item.question || item.q || "";
       const a = String(item.answer || item.a || item.result || "");
       if (!q && !a) continue;
-      pairs.push({ question: q, answer: a, positive: positiveWords.some(w => a.toLowerCase().includes(w)) });
+      pairs.push({ question: q, answer: a });
     }
   } else {
     for (const [k, v] of Object.entries(src)) {
-      const a = String(v);
-      pairs.push({ question: k, answer: a, positive: positiveWords.some(w => a.toLowerCase().includes(w)) });
+      pairs.push({ question: k, answer: String(v) });
     }
   }
   return pairs;
@@ -76,41 +73,28 @@ function extractQA(entry: AuditLog): { question: string; answer: string; positiv
 
 function generateDailyReport(audits: AuditLog[], storeName: string): string {
   const today = new Date().toLocaleDateString("ar-SA", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  let report = `📋 تقرير يومي — ${storeName}\n`;
+  let report = `📋 تقرير — ${storeName}\n`;
   report += `📅 ${today}\n`;
   report += `─────────────────────\n\n`;
 
   if (audits.length === 0) {
-    report += "لا توجد جولات تدقيق اليوم.\n";
+    report += "لا توجد جولات تدقيق.\n";
     return report;
   }
 
-  // Collect all negative findings across audits
-  const issues: Record<string, number> = {};
-  for (const a of audits) {
-    const qa = extractQA(a);
-    for (const { question, positive } of qa) {
-      if (!positive && question) issues[question] = (issues[question] || 0) + 1;
+  report += `عدد الجولات: ${audits.length}\n\n`;
+
+  for (const audit of audits) {
+    const time = new Date(audit.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
+    report += `⏰ ${time}\n`;
+    if (audit.summary) report += `${audit.summary}\n`;
+    const qa = extractQA(audit);
+    for (const { question, answer } of qa) {
+      report += `  • ${question}: ${answer}\n`;
     }
+    report += `\n`;
   }
 
-  const sortedIssues = Object.entries(issues).sort((a, b) => b[1] - a[1]);
-
-  if (sortedIssues.length === 0) {
-    report += "✅ لم يتم رصد أي ملاحظات سلبية اليوم. عمل ممتاز!\n";
-  } else {
-    report += "🔍 الملاحظات التي تحتاج انتباهك:\n\n";
-    for (const [question, count] of sortedIssues) {
-      const severity = count >= 3 ? "🔴" : count >= 2 ? "🟡" : "⚪";
-      report += `${severity} ${question}`;
-      if (count > 1) report += ` (تكررت ${count} مرات)`;
-      report += "\n";
-    }
-    report += "\n💡 التوصية: ركّز على الملاحظات المتكررة (🔴) أولاً.\n";
-  }
-
-  report += `\n─────────────────────\n`;
-  report += `عدد الجولات: ${audits.length}\n`;
   return report;
 }
 
@@ -186,28 +170,15 @@ export default function Dashboard() {
   }, [user, dashState, stores]);
 
   const displayName = profile?.full_name || user?.email?.split("@")[0] || "التاجر";
-  const storeNameMap = Object.fromEntries(stores.map(s => [s.id, s.name]));
 
   const latestAudit = audits.length > 0 ? audits[0] : null;
   const isConnected = latestAudit ? (Date.now() - new Date(latestAudit.created_at).getTime()) < 30 * 60 * 1000 : false;
-
-  // Today's negative findings grouped
-  const todayIssues = useMemo(() => {
-    const issues: Record<string, number> = {};
-    for (const a of audits) {
-      const qa = extractQA(a);
-      for (const { question, positive } of qa) {
-        if (!positive && question) issues[question] = (issues[question] || 0) + 1;
-      }
-    }
-    return Object.entries(issues).sort((a, b) => b[1] - a[1]);
-  }, [audits]);
 
   const handleDownloadReport = () => {
     const storeName = stores.length === 1 ? stores[0].name : "جميع المتاجر";
     const report = generateDailyReport(audits, storeName);
     const dateStr = new Date().toISOString().split("T")[0];
-    downloadReport(report, `تقرير-يومي-${dateStr}.txt`);
+    downloadReport(report, `تقرير-${dateStr}.txt`);
   };
 
   // ── Loading ──
@@ -285,7 +256,7 @@ export default function Dashboard() {
   }
 
   // ══════════════════════════════════════════════════
-  // ═══  ACTIVE DASHBOARD — Simple Merchant View  ═══
+  // ═══  ACTIVE DASHBOARD                         ═══
   // ══════════════════════════════════════════════════
 
   return (
@@ -324,11 +295,11 @@ export default function Dashboard() {
           }} />
         )}
 
-        {/* ── TODAY'S FINDINGS — Only negatives that need attention ── */}
+        {/* ── TODAY'S REPORT ── */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           className="rounded-xl bg-card border border-border p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-foreground font-arabic">ملاحظات اليوم</h2>
+            <h2 className="text-base font-bold text-foreground font-arabic">تقرير اليوم</h2>
             {audits.length > 0 && (
               <Button size="sm" variant="outline" className="text-xs font-arabic gap-1.5" onClick={handleDownloadReport}>
                 <FileDown className="w-3.5 h-3.5" />
@@ -337,53 +308,45 @@ export default function Dashboard() {
             )}
           </div>
 
-          {todayIssues.length === 0 ? (
+          {audits.length === 0 ? (
             <div className="text-center py-8">
-              <CheckCircle2 className="w-10 h-10 text-emerald mx-auto mb-3 opacity-60" />
-              <p className="text-sm text-emerald font-arabic font-semibold">لا توجد ملاحظات سلبية اليوم</p>
-              <p className="text-xs text-muted-foreground font-arabic mt-1">
-                {audits.length > 0 ? "جميع الجولات أظهرت نتائج إيجابية 👏" : "لم تُجرَ جولات تدقيق بعد"}
-              </p>
+              <ClipboardCheck className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-30" />
+              <p className="text-sm text-muted-foreground font-arabic">لم تُجرَ جولات تدقيق بعد اليوم</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {todayIssues.map(([question, count], i) => (
-                <div key={i} className={`rounded-lg p-3 flex items-start gap-3 ${
-                  count >= 3 ? "bg-destructive/8 border border-destructive/15" :
-                  count >= 2 ? "bg-accent/8 border border-accent/15" :
-                  "bg-secondary/50 border border-border"
-                }`}>
-                  {count >= 3 ? (
-                    <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
-                  ) : count >= 2 ? (
-                    <AlertTriangle className="w-4 h-4 text-accent mt-0.5 shrink-0" />
-                  ) : (
-                    <XCircle className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-arabic text-foreground">{question}</p>
-                    {count > 1 && (
-                      <p className="text-xs text-muted-foreground font-arabic mt-0.5">تكررت {count} مرات اليوم</p>
+            <div className="space-y-3">
+              {audits.slice(0, 5).map((audit) => {
+                const qa = extractQA(audit);
+                const time = new Date(audit.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
+                return (
+                  <div key={audit.id} className="rounded-lg bg-secondary/30 border border-border p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-muted-foreground font-mono">{time}</span>
+                    </div>
+                    {audit.summary && (
+                      <p className="text-sm text-foreground font-arabic leading-relaxed mb-2">{audit.summary}</p>
+                    )}
+                    {qa.length > 0 && (
+                      <div className="space-y-1">
+                        {qa.map((item, i) => (
+                          <div key={i} className="flex items-start justify-between gap-2 text-xs">
+                            <span className="text-muted-foreground font-arabic">{item.question}</span>
+                            <span className="text-foreground font-arabic font-medium shrink-0">{item.answer}</span>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
-              <p className="text-xs text-primary font-arabic mt-3 pt-3 border-t border-border/50">
-                💡 ركّز على حل الملاحظات المتكررة — هذا يُحسّن أداء المحل بسرعة
-              </p>
+                );
+              })}
+              {audits.length > 5 && (
+                <p className="text-xs text-muted-foreground font-arabic text-center">
+                  و {audits.length - 5} جولات أخرى — حمّل التقرير للاطلاع على الكل
+                </p>
+              )}
             </div>
           )}
         </motion.div>
-
-        {/* ── LATEST AUDIT SUMMARY ── */}
-        {latestAudit && latestAudit.summary && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl bg-card border border-border p-5">
-            <h3 className="text-sm font-bold text-foreground font-arabic mb-2">آخر ملخص من الذكاء الاصطناعي</h3>
-            <p className="text-sm text-muted-foreground font-arabic leading-relaxed">{latestAudit.summary}</p>
-            <p className="text-[10px] text-muted-foreground font-mono mt-3">{timeAgo(latestAudit.created_at)}</p>
-          </motion.div>
-        )}
       </div>
     </DashboardLayout>
   );
