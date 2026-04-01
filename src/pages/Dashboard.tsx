@@ -2,18 +2,15 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Store, Eye, Cpu, Clock, Rocket, Camera, ClipboardCheck, CreditCard,
-  TrendingUp, AlertTriangle, Wifi, WifiOff
+  Rocket, Camera, ClipboardCheck, CreditCard, Clock,
+  Wifi, WifiOff, FileDown, CheckCircle2, XCircle, AlertTriangle
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { StatCard } from "@/components/ui/stat-card";
 import HardwareSetup from "@/components/dashboard/HardwareSetup";
 import { WelcomeTutorial } from "@/components/dashboard/WelcomeTutorial";
 import { BroadcastBanner } from "@/components/dashboard/BroadcastBanner";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { StatCardSkeleton, TableSkeleton } from "@/components/ui/carbon-skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -56,24 +53,75 @@ function timeAgo(dateStr: string): string {
   return `قبل ${Math.floor(hrs / 24)} يوم`;
 }
 
-function extractQA(entry: AuditLog): { question: string; positive: boolean }[] {
+function extractQA(entry: AuditLog): { question: string; answer: string; positive: boolean }[] {
   const src = entry.observations || entry.result;
   if (!src || typeof src !== "object") return [];
-  const pairs: { question: string; positive: boolean }[] = [];
+  const pairs: { question: string; answer: string; positive: boolean }[] = [];
   const positiveWords = ["نعم", "yes", "نظيف", "clean", "ممتاز", "جيد", "ملتزم", "موجود", "true"];
   if (Array.isArray(src)) {
     for (const item of src) {
       const q = item.question || item.q || "";
       const a = String(item.answer || item.a || item.result || "");
       if (!q && !a) continue;
-      pairs.push({ question: q, positive: positiveWords.some(w => a.toLowerCase().includes(w)) });
+      pairs.push({ question: q, answer: a, positive: positiveWords.some(w => a.toLowerCase().includes(w)) });
     }
   } else {
     for (const [k, v] of Object.entries(src)) {
-      pairs.push({ question: k, positive: positiveWords.some(w => String(v).toLowerCase().includes(w)) });
+      const a = String(v);
+      pairs.push({ question: k, answer: a, positive: positiveWords.some(w => a.toLowerCase().includes(w)) });
     }
   }
   return pairs;
+}
+
+function generateDailyReport(audits: AuditLog[], storeName: string): string {
+  const today = new Date().toLocaleDateString("ar-SA", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  let report = `📋 تقرير يومي — ${storeName}\n`;
+  report += `📅 ${today}\n`;
+  report += `─────────────────────\n\n`;
+
+  if (audits.length === 0) {
+    report += "لا توجد جولات تدقيق اليوم.\n";
+    return report;
+  }
+
+  // Collect all negative findings across audits
+  const issues: Record<string, number> = {};
+  for (const a of audits) {
+    const qa = extractQA(a);
+    for (const { question, positive } of qa) {
+      if (!positive && question) issues[question] = (issues[question] || 0) + 1;
+    }
+  }
+
+  const sortedIssues = Object.entries(issues).sort((a, b) => b[1] - a[1]);
+
+  if (sortedIssues.length === 0) {
+    report += "✅ لم يتم رصد أي ملاحظات سلبية اليوم. عمل ممتاز!\n";
+  } else {
+    report += "🔍 الملاحظات التي تحتاج انتباهك:\n\n";
+    for (const [question, count] of sortedIssues) {
+      const severity = count >= 3 ? "🔴" : count >= 2 ? "🟡" : "⚪";
+      report += `${severity} ${question}`;
+      if (count > 1) report += ` (تكررت ${count} مرات)`;
+      report += "\n";
+    }
+    report += "\n💡 التوصية: ركّز على الملاحظات المتكررة (🔴) أولاً.\n";
+  }
+
+  report += `\n─────────────────────\n`;
+  report += `عدد الجولات: ${audits.length}\n`;
+  return report;
+}
+
+function downloadReport(text: string, filename: string) {
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function Dashboard() {
@@ -98,10 +146,12 @@ export default function Dashboard() {
       const storesData = storesRes.data || [];
       const storeIds = storesData.map(s => s.id);
 
+      const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+
       const [subsRes, auditsRes] = await Promise.all([
         supabase.from("subscriptions").select("id, tier, status, price_sar").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1),
         storeIds.length > 0
-          ? supabase.from("analytics_logs").select("id, store_id, score, status, summary, result, observations, created_at").in("store_id", storeIds).order("created_at", { ascending: false }).limit(30)
+          ? supabase.from("analytics_logs").select("id, store_id, score, status, summary, result, observations, created_at").in("store_id", storeIds).gte("created_at", todayStart.toISOString()).order("created_at", { ascending: false })
           : Promise.resolve({ data: [], error: null }),
       ]);
 
@@ -128,7 +178,7 @@ export default function Dashboard() {
     const channels = stores.map(s =>
       supabase.channel(`dash-live-${s.id}`)
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_logs", filter: `store_id=eq.${s.id}` }, (payload) => {
-          setAudits(prev => [payload.new as AuditLog, ...prev].slice(0, 30));
+          setAudits(prev => [payload.new as AuditLog, ...prev]);
         })
         .subscribe()
     );
@@ -136,39 +186,29 @@ export default function Dashboard() {
   }, [user, dashState, stores]);
 
   const displayName = profile?.full_name || user?.email?.split("@")[0] || "التاجر";
-
-  const todayStart = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
-  const todayAudits = useMemo(() => audits.filter(a => new Date(a.created_at) >= todayStart && a.score !== null), [audits, todayStart]);
-
-  const avgScore = useMemo(() => {
-    if (todayAudits.length === 0) return 0;
-    return Math.round(todayAudits.reduce((s, a) => s + (a.score || 0), 0) / todayAudits.length);
-  }, [todayAudits]);
-
-  const topFailure = useMemo(() => {
-    const failCounts: Record<string, number> = {};
-    let totalAudits = 0;
-    for (const a of todayAudits) {
-      const qa = extractQA(a);
-      if (qa.length > 0) totalAudits++;
-      for (const { question, positive } of qa) {
-        if (!positive && question) failCounts[question] = (failCounts[question] || 0) + 1;
-      }
-    }
-    const sorted = Object.entries(failCounts).sort((a, b) => b[1] - a[1]);
-    if (sorted.length === 0) return null;
-    return { question: sorted[0][0], count: sorted[0][1], total: totalAudits };
-  }, [todayAudits]);
-
-  const chartData = useMemo(() => {
-    return todayAudits.slice().reverse().map(a => ({
-      time: new Date(a.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
-      score: a.score || 0,
-    }));
-  }, [todayAudits]);
+  const storeNameMap = Object.fromEntries(stores.map(s => [s.id, s.name]));
 
   const latestAudit = audits.length > 0 ? audits[0] : null;
   const isConnected = latestAudit ? (Date.now() - new Date(latestAudit.created_at).getTime()) < 30 * 60 * 1000 : false;
+
+  // Today's negative findings grouped
+  const todayIssues = useMemo(() => {
+    const issues: Record<string, number> = {};
+    for (const a of audits) {
+      const qa = extractQA(a);
+      for (const { question, positive } of qa) {
+        if (!positive && question) issues[question] = (issues[question] || 0) + 1;
+      }
+    }
+    return Object.entries(issues).sort((a, b) => b[1] - a[1]);
+  }, [audits]);
+
+  const handleDownloadReport = () => {
+    const storeName = stores.length === 1 ? stores[0].name : "جميع المتاجر";
+    const report = generateDailyReport(audits, storeName);
+    const dateStr = new Date().toISOString().split("T")[0];
+    downloadReport(report, `تقرير-يومي-${dateStr}.txt`);
+  };
 
   // ── Loading ──
   if (dashState === "loading") {
@@ -176,10 +216,8 @@ export default function Dashboard() {
       <DashboardLayout>
         <div className="space-y-6">
           <div className="h-8 w-48 rounded bg-secondary animate-pulse" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[1, 2, 3].map(i => <StatCardSkeleton key={i} />)}
-          </div>
-          <TableSkeleton rows={3} />
+          <div className="h-32 rounded-xl bg-secondary animate-pulse" />
+          <div className="h-48 rounded-xl bg-secondary animate-pulse" />
         </div>
       </DashboardLayout>
     );
@@ -247,7 +285,7 @@ export default function Dashboard() {
   }
 
   // ══════════════════════════════════════════════════
-  // ═══  ACTIVE DASHBOARD — Overview Only          ═══
+  // ═══  ACTIVE DASHBOARD — Simple Merchant View  ═══
   // ══════════════════════════════════════════════════
 
   return (
@@ -256,55 +294,28 @@ export default function Dashboard() {
       <div className="space-y-5">
         <BroadcastBanner />
 
-        {/* ── 1. LIVE PULSE BAR ── */}
+        {/* ── CONNECTION STATUS ── */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl bg-card border border-border p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-3">
+          className="rounded-xl bg-card border border-border p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             {isConnected ? (
-              <div className="flex items-center gap-2">
+              <>
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald animate-pulse" />
                 <Wifi className="w-4 h-4 text-emerald" />
-                <span className="text-xs sm:text-sm font-semibold text-emerald font-arabic">المحل متصل</span>
-              </div>
+                <span className="text-sm font-semibold text-emerald font-arabic">المحل متصل — الرقابة تعمل</span>
+              </>
             ) : (
-              <div className="flex items-center gap-2">
+              <>
                 <div className="w-2.5 h-2.5 rounded-full bg-destructive" />
                 <WifiOff className="w-4 h-4 text-destructive" />
-                <span className="text-xs sm:text-sm font-semibold text-destructive font-arabic">المحل غير متصل</span>
-              </div>
+                <span className="text-sm font-semibold text-destructive font-arabic">المحل غير متصل</span>
+              </>
             )}
           </div>
           {latestAudit && (
-            <div className="flex items-center gap-2 sm:gap-3 text-xs">
-              <span className="text-muted-foreground font-arabic text-[10px] sm:text-xs">آخر جولة: {timeAgo(latestAudit.created_at)}</span>
-              {latestAudit.score !== null && (
-                <Badge variant="outline" className={`text-[10px] font-mono ${
-                  latestAudit.score >= 80 ? "text-emerald border-emerald/30" :
-                  latestAudit.score >= 50 ? "text-accent border-accent/30" :
-                  "text-destructive border-destructive/30"
-                }`}>
-                  {latestAudit.score}%
-                </Badge>
-              )}
-            </div>
+            <span className="text-xs text-muted-foreground font-arabic">آخر فحص: {timeAgo(latestAudit.created_at)}</span>
           )}
         </motion.div>
-
-        {/* ── 2. DAILY SNAPSHOT ── */}
-        <div>
-          <h2 className="text-lg font-bold text-foreground font-arabic mb-3 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-primary" />
-            ملخص الـ 24 ساعة الماضية
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <StatCard icon={Eye} label="جولات اليوم" value={String(todayAudits.length)} numericValue={todayAudits.length}
-              change={todayAudits.length > 0 ? "جولة مع نتائج" : "بانتظار البيانات"} changeType={todayAudits.length > 0 ? "positive" : "neutral"} glowColor="blue" />
-            <StatCard icon={TrendingUp} label="نسبة الانضباط" value={avgScore > 0 ? `${avgScore}%` : "--"} numericValue={avgScore > 0 ? avgScore : undefined}
-              change={avgScore >= 80 ? "أداء ممتاز" : avgScore > 0 ? "يحتاج تحسين" : "لا توجد بيانات"} changeType={avgScore >= 80 ? "positive" : avgScore > 0 ? "negative" : "neutral"} glowColor={avgScore >= 80 ? "emerald" : "gold"} />
-            <StatCard icon={Cpu} label="الأجهزة" value={stores.filter(s => s.hardware_choice).length + "/" + stores.length}
-              change={pendingSetupStore ? "يحتاج إعداد" : "مكتمل"} changeType={pendingSetupStore ? "negative" : "positive"} glowColor="blue" />
-          </div>
-        </div>
 
         {pendingSetupStore && (
           <HardwareSetup storeId={pendingSetupStore.id} onComplete={() => {
@@ -313,71 +324,66 @@ export default function Dashboard() {
           }} />
         )}
 
-        {/* ── 3. ACTIONABLE INSIGHT ── */}
-        {topFailure && (
+        {/* ── TODAY'S FINDINGS — Only negatives that need attention ── */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          className="rounded-xl bg-card border border-border p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-bold text-foreground font-arabic">ملاحظات اليوم</h2>
+            {audits.length > 0 && (
+              <Button size="sm" variant="outline" className="text-xs font-arabic gap-1.5" onClick={handleDownloadReport}>
+                <FileDown className="w-3.5 h-3.5" />
+                تحميل التقرير
+              </Button>
+            )}
+          </div>
+
+          {todayIssues.length === 0 ? (
+            <div className="text-center py-8">
+              <CheckCircle2 className="w-10 h-10 text-emerald mx-auto mb-3 opacity-60" />
+              <p className="text-sm text-emerald font-arabic font-semibold">لا توجد ملاحظات سلبية اليوم</p>
+              <p className="text-xs text-muted-foreground font-arabic mt-1">
+                {audits.length > 0 ? "جميع الجولات أظهرت نتائج إيجابية 👏" : "لم تُجرَ جولات تدقيق بعد"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {todayIssues.map(([question, count], i) => (
+                <div key={i} className={`rounded-lg p-3 flex items-start gap-3 ${
+                  count >= 3 ? "bg-destructive/8 border border-destructive/15" :
+                  count >= 2 ? "bg-accent/8 border border-accent/15" :
+                  "bg-secondary/50 border border-border"
+                }`}>
+                  {count >= 3 ? (
+                    <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                  ) : count >= 2 ? (
+                    <AlertTriangle className="w-4 h-4 text-accent mt-0.5 shrink-0" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-arabic text-foreground">{question}</p>
+                    {count > 1 && (
+                      <p className="text-xs text-muted-foreground font-arabic mt-0.5">تكررت {count} مرات اليوم</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <p className="text-xs text-primary font-arabic mt-3 pt-3 border-t border-border/50">
+                💡 ركّز على حل الملاحظات المتكررة — هذا يُحسّن أداء المحل بسرعة
+              </p>
+            </div>
+          )}
+        </motion.div>
+
+        {/* ── LATEST AUDIT SUMMARY ── */}
+        {latestAudit && latestAudit.summary && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl bg-destructive/5 border border-destructive/20 p-4 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-destructive mt-0.5 shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-bold text-foreground font-arabic">أبرز مخالفة متكررة اليوم</p>
-              <p className="text-sm text-muted-foreground font-arabic mt-1">
-                "{topFailure.question}" — تم رصدها في <span className="text-destructive font-bold">{topFailure.count}</span> من أصل <span className="font-bold">{topFailure.total}</span> جولة
-              </p>
-              <p className="text-xs text-primary font-arabic mt-2">
-                💡 {topFailure.count / topFailure.total >= 0.5 ? "مشكلة متكررة — أضفها لقائمة المراجعة اليومية" : "ملاحظة عرضية — تابعها خلال الأيام القادمة"}
-              </p>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ── 4. 24H TREND CHART ── */}
-        {chartData.length > 1 && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             className="rounded-xl bg-card border border-border p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground font-arabic">خط الأداء — آخر 24 ساعة</h3>
-                <p className="text-xs text-muted-foreground mt-0.5 font-arabic">نسبة الانضباط عبر الجولات</p>
-              </div>
-              <span className="text-[10px] text-emerald font-mono uppercase tracking-wider animate-pulse flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald" /> LIVE
-              </span>
-            </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" />
-                <XAxis dataKey="time" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))", fontSize: "12px" }} />
-                <Area type="monotone" dataKey="score" stroke="hsl(var(--primary))" fill="url(#scoreGrad)" strokeWidth={2} dot={{ r: 3, fill: "hsl(var(--primary))" }} />
-              </AreaChart>
-            </ResponsiveContainer>
+            <h3 className="text-sm font-bold text-foreground font-arabic mb-2">آخر ملخص من الذكاء الاصطناعي</h3>
+            <p className="text-sm text-muted-foreground font-arabic leading-relaxed">{latestAudit.summary}</p>
+            <p className="text-[10px] text-muted-foreground font-mono mt-3">{timeAgo(latestAudit.created_at)}</p>
           </motion.div>
         )}
-
-        {/* ── 5. QUICK LINKS ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Button variant="outline" className="h-auto py-4 flex items-center gap-3 justify-start font-arabic" onClick={() => navigate("/dashboard/audit")}>
-            <ClipboardCheck className="w-5 h-5 text-primary" />
-            <div className="text-right">
-              <p className="text-sm font-semibold">تقارير التدقيق</p>
-              <p className="text-[10px] text-muted-foreground">عرض جميع الجولات مع التوصيات</p>
-            </div>
-          </Button>
-          <Button variant="outline" className="h-auto py-4 flex items-center gap-3 justify-start font-arabic" onClick={() => navigate("/dashboard/store-control")}>
-            <Store className="w-5 h-5 text-primary" />
-            <div className="text-right">
-              <p className="text-sm font-semibold">تحكم المتجر</p>
-              <p className="text-[10px] text-muted-foreground">ساعات العمل والأسئلة المخصصة</p>
-            </div>
-          </Button>
-        </div>
       </div>
     </DashboardLayout>
   );
