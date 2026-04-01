@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
-  ClipboardCheck, Eye, CheckCircle2, XCircle, ChevronDown, ChevronUp,
+  ClipboardCheck, Eye, ChevronDown, ChevronUp,
   Calendar, FileDown
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -41,23 +41,20 @@ function timeAgo(dateStr: string): string {
   return `قبل ${Math.floor(hrs / 24)} يوم`;
 }
 
-function extractQA(entry: AuditLog): { question: string; answer: string; positive: boolean }[] {
+function extractQA(entry: AuditLog): { question: string; answer: string }[] {
   const src = entry.observations || entry.result;
   if (!src || typeof src !== "object") return [];
-  const pairs: { question: string; answer: string; positive: boolean }[] = [];
-  const positiveWords = ["نعم", "yes", "نظيف", "clean", "ممتاز", "جيد", "ملتزم", "موجود", "true"];
-
+  const pairs: { question: string; answer: string }[] = [];
   if (Array.isArray(src)) {
     for (const item of src) {
       const q = item.question || item.q || "";
       const a = String(item.answer || item.a || item.result || "");
       if (!q && !a) continue;
-      pairs.push({ question: q, answer: a, positive: positiveWords.some(w => a.toLowerCase().includes(w)) });
+      pairs.push({ question: q, answer: a });
     }
   } else {
     for (const [k, v] of Object.entries(src)) {
-      const a = String(v);
-      pairs.push({ question: k, answer: a, positive: positiveWords.some(w => a.toLowerCase().includes(w)) });
+      pairs.push({ question: k, answer: String(v) });
     }
   }
   return pairs;
@@ -66,6 +63,45 @@ function extractQA(entry: AuditLog): { question: string; answer: string; positiv
 function hasFindings(entry: AuditLog): boolean {
   if (extractQA(entry).length > 0) return true;
   return (typeof entry.summary === "string" && entry.summary.trim().length > 0) || entry.score !== null;
+}
+
+function generateReport(audits: AuditLog[], storeName: string, periodLabel: string): string {
+  const today = new Date().toLocaleDateString("ar-SA", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  let report = `📋 تقرير ${periodLabel} — ${storeName}\n`;
+  report += `📅 ${today}\n`;
+  report += `─────────────────────\n\n`;
+
+  if (audits.length === 0) {
+    report += "لا توجد جولات تدقيق في هذه الفترة.\n";
+    return report;
+  }
+
+  report += `عدد الجولات: ${audits.length}\n\n`;
+
+  for (const audit of audits) {
+    const dt = new Date(audit.created_at);
+    const dateStr = dt.toLocaleDateString("ar-SA", { month: "short", day: "numeric" });
+    const timeStr = dt.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
+    report += `⏰ ${dateStr} ${timeStr}\n`;
+    if (audit.summary) report += `${audit.summary}\n`;
+    const qa = extractQA(audit);
+    for (const { question, answer } of qa) {
+      report += `  • ${question}: ${answer}\n`;
+    }
+    report += `\n`;
+  }
+
+  return report;
+}
+
+function downloadReport(text: string, filename: string) {
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function AuditReports() {
@@ -167,6 +203,15 @@ export default function AuditReports() {
 
   const timeLabels: Record<TimeFilter, string> = { today: "اليوم", week: "آخر أسبوع", month: "آخر شهر" };
 
+  const handleDownloadReport = () => {
+    const storeName = storeFilter !== "all"
+      ? (storeNameMap[storeFilter] || "المتجر")
+      : (stores.length === 1 ? stores[0].name : "جميع المتاجر");
+    const report = generateReport(withFindings, storeName, timeLabels[timeFilter]);
+    const dateStr = new Date().toISOString().split("T")[0];
+    downloadReport(report, `تقرير-${timeLabels[timeFilter]}-${dateStr}.txt`);
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -188,7 +233,7 @@ export default function AuditReports() {
               <ClipboardCheck className="w-5 h-5 text-primary" />
               سجل الجولات
             </h1>
-            <p className="text-xs text-muted-foreground font-arabic mt-1">تفاصيل كل جولة تدقيق</p>
+            <p className="text-xs text-muted-foreground font-arabic mt-1">تفاصيل جولات التدقيق</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {(["today", "week", "month"] as TimeFilter[]).map(t => (
@@ -204,6 +249,12 @@ export default function AuditReports() {
                 {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             )}
+            {withFindings.length > 0 && (
+              <Button size="sm" variant="outline" className="text-xs font-arabic gap-1.5" onClick={handleDownloadReport}>
+                <FileDown className="w-3.5 h-3.5" />
+                تحميل التقرير
+              </Button>
+            )}
           </div>
         </div>
 
@@ -217,7 +268,6 @@ export default function AuditReports() {
           <div className="space-y-3">
             {withFindings.map((audit) => {
               const qa = extractQA(audit);
-              const negativeItems = qa.filter(q => !q.positive);
               const isExpanded = expandedAudit === audit.id;
               const storeName = storeNameMap[audit.store_id] || "المتجر";
 
@@ -228,20 +278,15 @@ export default function AuditReports() {
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                        negativeItems.length === 0 ? "bg-emerald" :
-                        negativeItems.length <= 2 ? "bg-accent" : "bg-destructive"
-                      }`} />
+                      <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
                       <div className="min-w-0">
                         <span className="text-xs text-muted-foreground font-arabic">{timeAgo(audit.created_at)} — {storeName}</span>
                         <p className="text-sm text-foreground font-arabic mt-0.5 truncate">
-                          {negativeItems.length === 0
-                            ? "✅ لا توجد ملاحظات"
-                            : `${negativeItems.length} ملاحظة تحتاج انتباه`}
+                          {audit.summary || `${qa.length} بند تم فحصه`}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="shrink-0">
                       {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                     </div>
                   </div>
@@ -249,28 +294,16 @@ export default function AuditReports() {
                   {isExpanded && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
                       className="mt-4 pt-3 border-t border-border space-y-2">
-                      
-                      {/* Show summary */}
-                      {audit.summary && (
-                        <p className="text-sm text-muted-foreground font-arabic leading-relaxed mb-3">{audit.summary}</p>
-                      )}
 
-                      {/* Show only negative findings prominently, positives subtly */}
+                      {/* Q&A — neutral display */}
                       {qa.length > 0 && (
                         <div className="space-y-1.5">
-                          {qa.filter(q => !q.positive).map((item, i) => (
-                            <div key={`neg-${i}`} className="flex items-start gap-2 py-1.5 px-3 rounded-lg bg-destructive/5 border border-destructive/10">
-                              <XCircle className="w-3.5 h-3.5 text-destructive mt-0.5 shrink-0" />
-                              <span className="text-sm text-foreground font-arabic flex-1">{item.question}</span>
-                              <span className="text-xs text-destructive font-arabic shrink-0">{item.answer}</span>
+                          {qa.map((item, i) => (
+                            <div key={i} className="flex items-start justify-between gap-2 py-1.5 px-3 rounded-lg bg-secondary/30">
+                              <span className="text-sm text-muted-foreground font-arabic flex-1">{item.question}</span>
+                              <span className="text-sm text-foreground font-arabic font-medium shrink-0">{item.answer}</span>
                             </div>
                           ))}
-                          {qa.filter(q => q.positive).length > 0 && (
-                            <p className="text-xs text-emerald font-arabic pt-2 flex items-center gap-1">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              {qa.filter(q => q.positive).length} بند ملتزم
-                            </p>
-                          )}
                         </div>
                       )}
 
