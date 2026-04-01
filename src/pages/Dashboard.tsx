@@ -124,13 +124,18 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
-      const [storesRes, subsRes, auditsRes] = await Promise.all([
-        supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status, whatsapp_enabled, custom_queries, query_status").eq("user_id", user.id),
+      const storeIds: string[] = [];
+      const storesRes = await supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status, whatsapp_enabled, custom_queries, query_status").eq("user_id", user.id);
+      const storesData = storesRes.data || [];
+      storesData.forEach(s => storeIds.push(s.id));
+
+      const [subsRes, auditsRes] = await Promise.all([
         supabase.from("subscriptions").select("id, tier, status, price_sar").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1),
-        supabase.from("analytics_logs").select("id, store_id, score, status, summary, result, observations, ai_reasoning, confidence_score, created_at, disputed").order("created_at", { ascending: false }).limit(100),
+        storeIds.length > 0
+          ? supabase.from("analytics_logs").select("id, store_id, score, status, summary, result, observations, ai_reasoning, confidence_score, created_at, disputed").in("store_id", storeIds).order("created_at", { ascending: false }).range(0, PAGE_SIZE - 1)
+          : Promise.resolve({ data: [], error: null }),
       ]);
 
-      const storesData = storesRes.data || [];
       const subData = subsRes.data?.[0] || null;
       setStores(storesData);
       setSubscription(subData);
@@ -143,10 +148,30 @@ export default function Dashboard() {
       if (!localStorage.getItem(tutorialKey)) { setShowWelcome(true); localStorage.setItem(tutorialKey, "1"); }
       const needsSetup = storesData.find((s) => !s.hardware_choice);
       if (needsSetup) setPendingSetupStore(needsSetup);
-      if (auditsRes.data) setAudits(auditsRes.data as AuditLog[]);
+      const auditData = (auditsRes as any).data || [];
+      setAudits(auditData as AuditLog[]);
+      setHasMoreAudits(auditData.length === PAGE_SIZE);
     };
     fetchData();
   }, [user]);
+
+  // Load more audits
+  const loadMoreAudits = async () => {
+    if (!user || loadingMore || !hasMoreAudits) return;
+    setLoadingMore(true);
+    const storeIds = stores.map(s => s.id);
+    const from = (auditPage + 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    const { data } = await supabase.from("analytics_logs")
+      .select("id, store_id, score, status, summary, result, observations, ai_reasoning, confidence_score, created_at, disputed")
+      .in("store_id", storeIds).order("created_at", { ascending: false }).range(from, to);
+    if (data) {
+      setAudits(prev => [...prev, ...(data as AuditLog[])]);
+      setHasMoreAudits(data.length === PAGE_SIZE);
+      setAuditPage(p => p + 1);
+    }
+    setLoadingMore(false);
+  };
 
   // Realtime
   useEffect(() => {
