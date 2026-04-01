@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { LiveAuditFeed } from "@/components/dashboard/LiveAuditFeed";
+import { AuditDetailRow } from "@/components/dashboard/AuditDetailRow";
 import { Download, Filter, Calendar, TrendingUp, AlertTriangle, CheckCircle, BarChart3, FileText, FileDown } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,9 @@ interface AuditLog {
   status: string | null;
   summary: string | null;
   result: any;
+  observations: any;
+  ai_reasoning: string | null;
+  confidence_score: number | null;
   created_at: string;
 }
 
@@ -48,7 +52,7 @@ export default function Reports() {
       setLoading(true);
       const [storesRes, auditsRes, subsRes] = await Promise.all([
         supabase.from("stores").select("id, name").eq("user_id", user.id),
-        supabase.from("analytics_logs").select("*").order("created_at", { ascending: false }).limit(500),
+        supabase.from("analytics_logs").select("id, store_id, score, status, summary, result, observations, ai_reasoning, confidence_score, created_at").order("created_at", { ascending: false }).limit(500),
         supabase.from("subscriptions").select("id, status").eq("user_id", user.id).eq("status", "active").limit(1),
       ]);
       if (storesRes.data) setStores(storesRes.data);
@@ -374,46 +378,27 @@ export default function Reports() {
         {/* Live Audit Feed */}
         <LiveAuditFeed storeIds={stores.map((s) => s.id)} storeNameMap={storeNameMap} />
 
-        {/* Audit Table */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl bg-card border border-border overflow-hidden">
-          <div className="p-4 border-b border-border">
-            <h3 className="text-sm font-semibold text-foreground font-arabic">سجل التدقيقات التفصيلي</h3>
+        {/* Detailed Audit Cards */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-foreground font-arabic">سجل التدقيقات التفصيلي — اضغط لعرض الأسئلة</h3>
+            <span className="text-[10px] text-muted-foreground font-mono">{filtered.length} تدقيق</span>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-right p-3 text-xs text-muted-foreground font-arabic font-medium">التاريخ</th>
-                  <th className="text-right p-3 text-xs text-muted-foreground font-arabic font-medium">المتجر</th>
-                  <th className="text-right p-3 text-xs text-muted-foreground font-arabic font-medium">الحالة</th>
-                  <th className="text-right p-3 text-xs text-muted-foreground font-arabic font-medium">النتيجة</th>
-                  <th className="text-right p-3 text-xs text-muted-foreground font-arabic font-medium">الملخص</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.slice(0, 50).map((audit) => (
-                  <tr key={audit.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                    <td className="p-3 text-xs text-muted-foreground font-mono">{new Date(audit.created_at).toLocaleString("ar-SA")}</td>
-                    <td className="p-3 text-xs text-foreground font-arabic">{storeNameMap[audit.store_id] || "—"}</td>
-                    <td className="p-3">
-                      <Badge variant="outline" className={`text-[10px] ${
-                        audit.status === "pass" ? "text-emerald border-emerald/30" : audit.status === "warning" ? "text-accent border-accent/30" : "text-destructive border-destructive/30"
-                      }`}>
-                        {audit.status === "pass" ? "ناجح" : audit.status === "warning" ? "تحذير" : "فشل"}
-                      </Badge>
-                    </td>
-                    <td className="p-3 text-xs font-mono text-foreground">{audit.score !== null ? `${audit.score}%` : "—"}</td>
-                    <td className="p-3 text-xs text-muted-foreground font-arabic max-w-[200px] truncate">{audit.summary || "—"}</td>
-                  </tr>
-                ))}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="p-8 text-center text-muted-foreground text-sm font-arabic">لا توجد تدقيقات للفترة والفلاتر المحددة</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          {filtered.length === 0 ? (
+            <div className="rounded-xl bg-card border border-border p-8 text-center text-muted-foreground text-sm font-arabic">
+              لا توجد تدقيقات للفترة والفلاتر المحددة
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[800px] overflow-y-auto">
+              {filtered.slice(0, 50).map((audit) => (
+                <AuditDetailRow
+                  key={audit.id}
+                  audit={audit}
+                  storeName={storeNameMap[audit.store_id] || "متجر"}
+                />
+              ))}
+            </div>
+          )}
         </motion.div>
       </div>
     </DashboardLayout>
