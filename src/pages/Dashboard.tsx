@@ -231,7 +231,7 @@ export default function Dashboard() {
             <h2 className="text-2xl font-bold text-foreground mb-3 font-arabic">أهلاً بك في ذكاء سبلت</h2>
             <p className="text-muted-foreground mb-2 font-arabic">جاري تجهيز نظام الرقابة الخاص بك.</p>
             <p className="text-sm text-muted-foreground mb-8 font-arabic">أكمل إعداد حسابك لبدء التدقيق الآلي بالذكاء الاصطناعي</p>
-            <div className="grid grid-cols-3 gap-3 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
               {[
                 { icon: CreditCard, label: "اختيار الباقة", desc: "حدد خطة تناسب احتياجاتك" },
                 { icon: Camera, label: "ربط الكاميرا", desc: "أضف بيانات RTSP الخاصة بك" },
@@ -294,25 +294,25 @@ export default function Dashboard() {
 
         {/* ── 1. LIVE PULSE BAR ── */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl bg-card border border-border p-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+          className="rounded-xl bg-card border border-border p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             {isConnected ? (
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald animate-pulse" />
                 <Wifi className="w-4 h-4 text-emerald" />
-                <span className="text-sm font-semibold text-emerald font-arabic">المحل متصل</span>
+                <span className="text-xs sm:text-sm font-semibold text-emerald font-arabic">المحل متصل</span>
               </div>
             ) : (
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-destructive" />
                 <WifiOff className="w-4 h-4 text-destructive" />
-                <span className="text-sm font-semibold text-destructive font-arabic">المحل غير متصل</span>
+                <span className="text-xs sm:text-sm font-semibold text-destructive font-arabic">المحل غير متصل</span>
               </div>
             )}
           </div>
           {latestAudit && (
-            <div className="flex items-center gap-3 text-xs">
-              <span className="text-muted-foreground font-arabic">آخر جولة: {timeAgo(latestAudit.created_at)}</span>
+            <div className="flex items-center gap-2 sm:gap-3 text-xs">
+              <span className="text-muted-foreground font-arabic text-[10px] sm:text-xs">آخر جولة: {timeAgo(latestAudit.created_at)}</span>
               {latestAudit.score !== null && (
                 <Badge variant="outline" className={`text-[10px] font-mono ${
                   latestAudit.score >= 80 ? "text-emerald border-emerald/30" :
@@ -332,7 +332,7 @@ export default function Dashboard() {
             <Clock className="w-4 h-4 text-primary" />
             ملخص الـ 24 ساعة الماضية
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <StatCard icon={Eye} label="جولات اليوم" value={String(todayWithFindings.length)} numericValue={todayWithFindings.length} change={todayWithFindings.length > 0 ? "جولة مع نتائج" : "بانتظار البيانات"} changeType={todayWithFindings.length > 0 ? "positive" : "neutral"} glowColor="blue" />
             <StatCard icon={TrendingUp} label="نسبة الانضباط" value={avgScore > 0 ? `${avgScore}%` : "--"} numericValue={avgScore > 0 ? avgScore : undefined} change={avgScore >= 80 ? "أداء ممتاز" : avgScore > 0 ? "يحتاج تحسين" : "لا توجد بيانات"} changeType={avgScore >= 80 ? "positive" : avgScore > 0 ? "negative" : "neutral"} glowColor={avgScore >= 80 ? "emerald" : "gold"} />
             <StatCard icon={Cpu} label="الأجهزة" value={stores.filter(s => s.hardware_choice).length + "/" + stores.length} change={pendingSetupStore ? "يحتاج إعداد" : "مكتمل"} changeType={pendingSetupStore ? "negative" : "positive"} glowColor="blue" />
@@ -494,7 +494,7 @@ export default function Dashboard() {
         {/* ── 6. MERCHANT CONTROL PANEL ── */}
         {stores.length > 0 && subscription && (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {stores.map(s => (
                 <MerchantControlPanel key={s.id}
                   store={{ id: s.id, name: s.name, is_active: s.is_active, operating_hours: s.operating_hours, whatsapp_enabled: s.whatsapp_enabled }}
