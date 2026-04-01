@@ -523,6 +523,13 @@ export default function Dashboard() {
                   </motion.div>
                 );
               })}
+              {hasMoreAudits && (
+                <div className="text-center pt-2">
+                  <Button variant="outline" size="sm" className="font-arabic text-xs" onClick={loadMoreAudits} disabled={loadingMore}>
+                    {loadingMore ? "جاري التحميل..." : "عرض المزيد"}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>
