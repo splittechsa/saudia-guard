@@ -493,13 +493,29 @@ export default function Dashboard() {
 
         {/* ── 6. MERCHANT CONTROL PANEL ── */}
         {stores.length > 0 && subscription && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {stores.map(s => (
+                <MerchantControlPanel key={s.id}
+                  store={{ id: s.id, name: s.name, is_active: s.is_active, operating_hours: s.operating_hours, whatsapp_enabled: s.whatsapp_enabled }}
+                  subscriptionTier={subscription.tier}
+                  onUpdate={() => {
+                    if (user) supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status, whatsapp_enabled, custom_queries, query_status").eq("user_id", user.id).then(({ data }) => { if (data) setStores(data); });
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* ── 7. CUSTOM QUESTIONS EDITOR ── */}
             {stores.map(s => (
-              <MerchantControlPanel key={s.id}
-                store={{ id: s.id, name: s.name, is_active: s.is_active, operating_hours: s.operating_hours, whatsapp_enabled: s.whatsapp_enabled }}
-                subscriptionTier={subscription.tier}
-                onUpdate={() => {
-                  if (user) supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status, whatsapp_enabled").eq("user_id", user.id).then(({ data }) => { if (data) setStores(data); });
+              <CustomQuestionsEditor
+                key={`q-${s.id}`}
+                storeId={s.id}
+                initialQueries={s.custom_queries}
+                queryStatus={s.query_status || "approved"}
+                isAdmin={false}
+                onSave={() => {
+                  if (user) supabase.from("stores").select("id, name, hardware_choice, is_active, operating_hours, store_status, whatsapp_enabled, custom_queries, query_status").eq("user_id", user.id).then(({ data }) => { if (data) setStores(data); });
                 }}
               />
             ))}
