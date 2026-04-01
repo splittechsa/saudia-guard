@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Shield, Settings, LogOut,
   Users, Activity, MessageSquare, Camera, Server, Menu, X,
-  Home, Headphones, Cog
+  Home, Headphones, Cog, Sliders
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { ConnectionPulse } from "@/components/ui/connection-pulse";
