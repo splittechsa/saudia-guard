@@ -268,7 +268,10 @@ export default function ITDashboard() {
     );
   }
 
+  const queueStores = storeHealths.filter(s => s.store_status === "pending_review" || s.store_status === "draft");
+
   const tabs = [
+    { id: "waitlist" as const, label: `قائمة الانتظار (${queueStores.length})`, icon: Zap },
     { id: "new_requests" as const, label: `طلبات جديدة (${newRequests.length})`, icon: Store },
     { id: "heartbeat" as const, label: "المحركات النشطة", icon: Activity },
     { id: "logs" as const, label: `السجلات ${disputedCount > 0 ? `(${disputedCount} طعن)` : ""}`, icon: Eye },
