@@ -52,7 +52,7 @@ export default function Reports() {
       setLoading(true);
       const [storesRes, auditsRes, subsRes] = await Promise.all([
         supabase.from("stores").select("id, name").eq("user_id", user.id),
-        supabase.from("analytics_logs").select("*").order("created_at", { ascending: false }).limit(500),
+        supabase.from("analytics_logs").select("id, store_id, score, status, summary, result, observations, ai_reasoning, confidence_score, created_at").order("created_at", { ascending: false }).limit(500),
         supabase.from("subscriptions").select("id, status").eq("user_id", user.id).eq("status", "active").limit(1),
       ]);
       if (storesRes.data) setStores(storesRes.data);
