@@ -13,13 +13,29 @@ const RATE_WINDOW_MS = 60_000;
 function checkRateLimit(storeId: string): boolean {
   const now = Date.now();
   const entry = rateLimitMap.get(storeId);
+
   if (!entry || now > entry.resetAt) {
     rateLimitMap.set(storeId, { count: 1, resetAt: now + RATE_WINDOW_MS });
     return true;
   }
+
   if (entry.count >= RATE_LIMIT) return false;
+
   entry.count++;
   return true;
+}
+
+function getApiKey(req: Request): string | null {
+  return req.headers.get("x-api-key") ?? req.headers.get("apikey");
+}
+
+function normalizeAudits(body: any): any[] {
+  if (Array.isArray(body)) return body;
+  if (body?.type === "bulk" && Array.isArray(body.records)) return body.records;
+  if (body && typeof body === "object" && ("score" in body || "result" in body || "summary" in body || "observations" in body)) {
+    return [body];
+  }
+  return [];
 }
 
 Deno.serve(async (req) => {
@@ -34,22 +50,16 @@ Deno.serve(async (req) => {
     );
 
     const body = await req.json();
-    const audits: any[] = Array.isArray(body) ? body : [body];
-    const isSyncing = body.is_syncing === true;
-    const syncTotal = body.sync_total || 0;
-    const syncBatch = body.sync_batch || 0;
-
-    if (audits.length === 0) {
-      return new Response(JSON.stringify({ error: "No audit data provided" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const payloadType = typeof body?.type === "string" ? body.type : null;
+    const audits: any[] = normalizeAudits(body);
+    const isSyncing = body?.is_syncing === true;
+    const syncTotal = Number(body?.total ?? body?.sync_total ?? 0);
+    const syncBatch = Number(body?.synced ?? body?.sync_batch ?? 0);
 
     // --- API Key Authentication ---
-    const apiKeyHeader = req.headers.get("x-api-key");
+    const apiKeyHeader = getApiKey(req);
     if (!apiKeyHeader) {
-      return new Response(JSON.stringify({ error: "Missing x-api-key header" }), {
+      return new Response(JSON.stringify({ error: "Missing x-api-key or apikey header" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -69,11 +79,77 @@ Deno.serve(async (req) => {
     }
 
     const authorizedStoreId = keyRow.store_id;
+    const payloadStoreId = typeof body?.store_id === "string" ? body.store_id : null;
 
-    const unauthorized = audits.some((a) => a.store_id && a.store_id !== authorizedStoreId);
+    if (payloadStoreId && payloadStoreId !== authorizedStoreId) {
+      return new Response(JSON.stringify({ error: "API key does not match store_id in payload" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const unauthorized = audits.some((audit) => audit?.store_id && audit.store_id !== authorizedStoreId);
     if (unauthorized) {
       return new Response(JSON.stringify({ error: "API key does not match store_id in payload" }), {
         status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (payloadType === "reset_command") {
+      const { error: resetError } = await supabase
+        .from("stores")
+        .update({ remote_command: "run" })
+        .eq("id", authorizedStoreId);
+
+      if (resetError) {
+        console.error("Reset command error:", resetError);
+        return new Response(JSON.stringify({ error: resetError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      await supabase.from("system_logs").insert({
+        store_id: authorizedStoreId,
+        log_type: "reset_command",
+        metadata: {
+          source: "split_engine",
+          next_command: "run",
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      return new Response(JSON.stringify({ success: true, action: "reset_command", remote_command: "run" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (payloadType === "camera_failure" || body?.camera_failure === true) {
+      const { error: cameraError } = await supabase.from("security_alerts").insert({
+        store_id: authorizedStoreId,
+        alert_type: "camera_offline",
+        message: `تنبيه: كاميرا الفرع غير متصلة — ${body?.camera_failure_reason || "سبب غير محدد"}`,
+      });
+
+      if (cameraError) {
+        console.error("Camera failure insert error:", cameraError);
+        return new Response(JSON.stringify({ error: cameraError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, action: "camera_failure" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (audits.length === 0) {
+      return new Response(JSON.stringify({ error: "No audit data provided" }), {
+        status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -98,6 +174,7 @@ Deno.serve(async (req) => {
     const rows = audits.map((audit) => {
       const score = typeof audit.score === "number" ? audit.score : null;
       let status = audit.status || "pass";
+
       if (score !== null) {
         if (score < 50) status = "fail";
         else if (score < 80) status = "warning";
@@ -152,7 +229,7 @@ Deno.serve(async (req) => {
     }
 
     // Auto-create security alerts for scores < 50
-    const failedAudits = (data || []).filter((d: any) => d.score !== null && d.score < 50);
+    const failedAudits = (data || []).filter((audit: any) => audit.score !== null && audit.score < 50);
     if (failedAudits.length > 0) {
       const alertRows = failedAudits.map((audit: any) => ({
         store_id: audit.store_id,
@@ -162,15 +239,6 @@ Deno.serve(async (req) => {
 
       const { error: alertError } = await supabase.from("security_alerts").insert(alertRows);
       if (alertError) console.error("Alert insert error:", alertError);
-    }
-
-    // Camera failure report
-    if (body.camera_failure) {
-      await supabase.from("security_alerts").insert({
-        store_id: authorizedStoreId,
-        alert_type: "camera_offline",
-        message: `تنبيه: كاميرا الفرع غير متصلة — ${body.camera_failure_reason || "سبب غير محدد"}`,
-      });
     }
 
     return new Response(
