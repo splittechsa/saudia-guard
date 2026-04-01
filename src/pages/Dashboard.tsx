@@ -173,17 +173,19 @@ export default function Dashboard() {
     setLoadingMore(false);
   };
 
-  // Realtime
+  // Realtime — filtered per store
   useEffect(() => {
-    if (!user || dashState !== "active") return;
-    const channel = supabase
-      .channel("live-audits")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_logs" }, (payload) => {
-        setAudits((prev) => [payload.new as AuditLog, ...prev].slice(0, 100));
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [user, dashState]);
+    if (!user || dashState !== "active" || stores.length === 0) return;
+    const channels = stores.map(s =>
+      supabase
+        .channel(`live-audits-${s.id}`)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_logs", filter: `store_id=eq.${s.id}` }, (payload) => {
+          setAudits((prev) => [payload.new as AuditLog, ...prev].slice(0, PAGE_SIZE * (auditPage + 1)));
+        })
+        .subscribe()
+    );
+    return () => { channels.forEach(ch => supabase.removeChannel(ch)); };
+  }, [user, dashState, stores]);
 
   const displayName = profile?.full_name || user?.email?.split("@")[0] || "التاجر";
 
