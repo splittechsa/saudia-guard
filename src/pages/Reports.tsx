@@ -381,7 +381,7 @@ export default function Reports() {
         {/* Detailed Audit Cards */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-foreground font-arabic">سجل التدقيقات التفصيلي — اضغط لعرض الأسئلة</h3>
+            <h3 className="text-sm font-semibold text-foreground font-arabic">نتائج الجولات — اضغط لعرض الأسئلة والأجوبة</h3>
             <span className="text-[10px] text-muted-foreground font-mono">{filtered.length} تدقيق</span>
           </div>
           {filtered.length === 0 ? (
