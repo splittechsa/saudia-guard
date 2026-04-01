@@ -91,9 +91,14 @@ function extractQA(entry: AuditLog): { question: string; answer: string; positiv
   return pairs;
 }
 
-// ── Check if audit has meaningful content ──
+// ── Check if audit has meaningful content for timeline ──
 function hasFindings(entry: AuditLog): boolean {
-  return extractQA(entry).length > 0;
+  if (extractQA(entry).length > 0) return true;
+
+  const hasSummary = typeof entry.summary === "string" && entry.summary.trim().length > 0;
+  const hasScore = entry.score !== null;
+
+  return hasSummary || hasScore;
 }
 
 export default function Dashboard() {
