@@ -77,7 +77,7 @@ export default function ITDashboard() {
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [storeNames, setStoreNames] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState<"waitlist" | "new_requests" | "heartbeat" | "logs" | "tickets" | "debug">("waitlist");
+  const [activeTab, setActiveTab] = useState<"waitlist" | "new_requests" | "heartbeat" | "logs" | "tickets" | "debug" | "questions">("waitlist");
   const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null);
   const [syncStatuses] = useState<SyncStatus[]>([]);
   const [debugLogs, setDebugLogs] = useState<any[]>([]);
