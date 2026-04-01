@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Brain, ShieldCheck, AlertTriangle, XCircle, CheckCircle, MessageSquare } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { ChevronDown, ChevronUp, Clock, CheckCircle, XCircle, AlertTriangle, Minus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface AuditDetailRowProps {
@@ -22,16 +21,6 @@ interface AuditDetailRowProps {
 export function AuditDetailRow({ audit, storeName }: AuditDetailRowProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const statusConfig = {
-    pass: { icon: CheckCircle, color: "text-emerald", bg: "bg-emerald/10", border: "border-emerald/20", label: "ناجح" },
-    warning: { icon: AlertTriangle, color: "text-accent", bg: "bg-accent/10", border: "border-accent/20", label: "تحذير" },
-    fail: { icon: XCircle, color: "text-destructive", bg: "bg-destructive/10", border: "border-destructive/20", label: "فشل" },
-  };
-
-  const cfg = statusConfig[(audit.status as keyof typeof statusConfig)] || statusConfig.fail;
-  const StatusIcon = cfg.icon;
-
-  // Extract Q&A from observations or result
   const extractQA = (): { question: string; answer: string }[] => {
     const source = audit.observations || audit.result;
     if (!source || typeof source !== "object") return [];
@@ -49,57 +38,83 @@ export function AuditDetailRow({ audit, storeName }: AuditDetailRowProps) {
 
   const questions = extractQA();
 
-  const getAnswerStyle = (answer: string) => {
+  const getAnswerInfo = (answer: string) => {
     const lower = answer.toLowerCase();
-    if (lower.includes("نعم") || lower === "yes" || lower === "true" || lower.includes("متوفر") || lower.includes("ملتزم") || lower.includes("نظيف") || lower.includes("موجود")) {
-      return { color: "text-emerald", icon: CheckCircle, bg: "bg-emerald/10" };
+    if (lower.includes("نعم") || lower === "yes" || lower === "true" || lower.includes("متوفر") || lower.includes("ملتزم") || lower.includes("نظيف") || lower.includes("موجود") || lower.includes("مرتب")) {
+      return { color: "text-emerald", bg: "bg-emerald/8", border: "border-emerald/15", icon: CheckCircle };
     }
-    if (lower.includes("لا") || lower === "no" || lower === "false" || lower.includes("غير") || lower.includes("مخالف") || lower.includes("متسخ")) {
-      return { color: "text-destructive", icon: XCircle, bg: "bg-destructive/10" };
+    if (lower.includes("لا") || lower === "no" || lower === "false" || lower.includes("غير") || lower.includes("مخالف") || lower.includes("متسخ") || lower.includes("غائب")) {
+      return { color: "text-destructive", bg: "bg-destructive/8", border: "border-destructive/15", icon: XCircle };
     }
-    return { color: "text-accent", icon: AlertTriangle, bg: "bg-accent/10" };
+    return { color: "text-accent", bg: "bg-accent/8", border: "border-accent/15", icon: AlertTriangle };
   };
 
+  const scoreColor = audit.score !== null
+    ? audit.score >= 80 ? "text-emerald" : audit.score >= 50 ? "text-accent" : "text-destructive"
+    : "text-muted-foreground";
+
+  const scoreBarColor = audit.score !== null
+    ? audit.score >= 80 ? "bg-emerald" : audit.score >= 50 ? "bg-accent" : "bg-destructive"
+    : "bg-muted";
+
+  const timeStr = new Date(audit.created_at).toLocaleString("ar-SA", {
+    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+
+  const positiveCount = questions.filter(q => {
+    const l = q.answer.toLowerCase();
+    return l.includes("نعم") || l === "yes" || l === "true" || l.includes("متوفر") || l.includes("ملتزم") || l.includes("نظيف") || l.includes("موجود") || l.includes("مرتب");
+  }).length;
+
   return (
-    <div className={`rounded-xl border transition-all duration-200 ${expanded ? `${cfg.border} bg-secondary/20` : "border-border bg-card hover:border-primary/20"}`}>
-      {/* Header Row */}
+    <div className={`rounded-xl border transition-all duration-200 overflow-hidden ${expanded ? "border-primary/20 bg-card" : "border-border bg-card hover:border-border/80"}`}>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 p-4 text-right"
+        className="w-full flex items-center gap-3 p-4"
       >
-        <div className={`p-2 rounded-lg ${cfg.bg} shrink-0`}>
-          <StatusIcon className={`w-4 h-4 ${cfg.color}`} />
+        {/* Score circle */}
+        <div className="relative shrink-0">
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${audit.score !== null ? (audit.score >= 80 ? "border-emerald/40" : audit.score >= 50 ? "border-accent/40" : "border-destructive/40") : "border-border"}`}>
+            <span className={`text-sm font-bold font-mono ${scoreColor}`}>
+              {audit.score !== null ? audit.score : "—"}
+            </span>
+          </div>
         </div>
 
         <div className="flex-1 min-w-0 text-right">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-foreground font-arabic">{storeName}</span>
-            <Badge variant="outline" className={`text-[9px] ${cfg.color} ${cfg.border}`}>
-              {cfg.label}
-            </Badge>
-            {audit.confidence_score !== null && (
-              <span className="text-[10px] text-muted-foreground font-mono">ثقة: {audit.confidence_score}%</span>
+            <span className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
+              <Clock className="w-3 h-3" /> {timeStr}
+            </span>
+          </div>
+          {/* Mini Q&A summary */}
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[11px] text-muted-foreground font-arabic">
+              {questions.length > 0 ? `${questions.length} سؤال` : "لا توجد أسئلة"}
+            </span>
+            {questions.length > 0 && (
+              <>
+                <Minus className="w-3 h-3 text-border" />
+                <span className="text-[11px] text-emerald font-arabic">{positiveCount} ✓</span>
+                <span className="text-[11px] text-destructive font-arabic">{questions.length - positiveCount} ✗</span>
+              </>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5 font-arabic truncate">{audit.summary || "لا يوجد ملخص"}</p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="text-left">
-            {audit.score !== null && (
-              <span className={`text-lg font-bold font-mono ${cfg.color}`}>{audit.score}%</span>
-            )}
-            <p className="text-[10px] text-muted-foreground font-mono">
-              {new Date(audit.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })}
-            </p>
+        {/* Progress bar mini */}
+        <div className="w-20 shrink-0 hidden sm:block">
+          <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+            <div className={`h-full rounded-full ${scoreBarColor} transition-all`} style={{ width: `${audit.score ?? 0}%` }} />
           </div>
-          <div className="text-muted-foreground">
-            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </div>
+        </div>
+
+        <div className="text-muted-foreground shrink-0">
+          {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </div>
       </button>
 
-      {/* Expanded Details */}
       <AnimatePresence>
         {expanded && (
           <motion.div
@@ -109,50 +124,38 @@ export function AuditDetailRow({ audit, storeName }: AuditDetailRowProps) {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-4 space-y-4 border-t border-border/50 pt-4">
-              {/* Questions & Answers */}
-              {questions.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 mb-3">
-                    <MessageSquare className="w-4 h-4 text-primary" />
-                    <h4 className="text-xs font-semibold text-foreground font-arabic">نتائج الأسئلة ({questions.length})</h4>
-                  </div>
-                  <div className="grid gap-2">
-                    {questions.map((q, i) => {
-                      const style = getAnswerStyle(q.answer);
-                      const AnswerIcon = style.icon;
-                      return (
-                        <div key={i} className={`flex items-start gap-3 rounded-lg p-3 ${style.bg} border ${style.color.replace("text-", "border-")}/10`}>
-                          <div className="shrink-0 mt-0.5">
-                            <AnswerIcon className={`w-4 h-4 ${style.color}`} />
-                          </div>
+            <div className="px-4 pb-4 space-y-3 border-t border-border/50 pt-4">
+              {/* Summary */}
+              {audit.summary && (
+                <p className="text-sm text-muted-foreground font-arabic leading-relaxed">{audit.summary}</p>
+              )}
+
+              {/* All Questions & Answers - Full Width Cards */}
+              {questions.length > 0 ? (
+                <div className="grid gap-2">
+                  {questions.map((q, i) => {
+                    const style = getAnswerInfo(q.answer);
+                    const Icon = style.icon;
+                    return (
+                      <div key={i} className={`rounded-lg p-3 ${style.bg} border ${style.border}`}>
+                        <div className="flex items-start gap-3">
+                          <Icon className={`w-5 h-5 ${style.color} shrink-0 mt-0.5`} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs text-foreground font-arabic font-medium">{q.question}</p>
-                            <p className={`text-sm font-semibold font-arabic mt-1 ${style.color}`}>{q.answer}</p>
+                            <p className="text-xs text-muted-foreground font-arabic leading-relaxed">{q.question}</p>
+                            <p className={`text-sm font-bold font-arabic mt-1 ${style.color}`}>{q.answer}</p>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
                 </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground text-xs font-arabic">لا توجد تفاصيل للأسئلة</div>
               )}
 
-              {/* AI Reasoning */}
-              {audit.ai_reasoning && (
-                <div className="rounded-lg bg-primary/5 border border-primary/10 p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Brain className="w-4 h-4 text-primary" />
-                    <h4 className="text-xs font-semibold text-foreground font-arabic">تحليل الذكاء الاصطناعي</h4>
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{audit.ai_reasoning}</p>
-                </div>
-              )}
-
-              {/* Meta info */}
-              <div className="flex items-center gap-4 text-[10px] text-muted-foreground font-mono pt-2 border-t border-border/30">
-                <span>التاريخ: {new Date(audit.created_at).toLocaleString("ar-SA")}</span>
-                {audit.confidence_score !== null && <span>نسبة الثقة: {audit.confidence_score}%</span>}
-                <span>ID: {audit.id.slice(0, 8)}</span>
+              {/* Timestamp footer */}
+              <div className="text-[10px] text-muted-foreground font-mono pt-2 border-t border-border/30">
+                {new Date(audit.created_at).toLocaleString("ar-SA")}
               </div>
             </div>
           </motion.div>

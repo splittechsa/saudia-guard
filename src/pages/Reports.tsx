@@ -112,9 +112,9 @@ export default function Reports() {
   }, [filtered]);
 
   const statusPieData = [
-    { name: "ناجح", value: stats.passed, color: "hsl(160, 84%, 39%)" },
-    { name: "تحذير", value: stats.warnings, color: "hsl(43, 76%, 53%)" },
-    { name: "فشل", value: stats.failed, color: "hsl(0, 84%, 60%)" },
+    { name: "فوق 80%", value: stats.passed, color: "hsl(160, 84%, 39%)" },
+    { name: "50%-80%", value: stats.warnings, color: "hsl(43, 76%, 53%)" },
+    { name: "تحت 50%", value: stats.failed, color: "hsl(0, 84%, 60%)" },
   ].filter((d) => d.value > 0);
 
   const exportCSV = () => {
@@ -281,13 +281,13 @@ export default function Reports() {
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[140px] bg-card border-border">
-              <SelectValue placeholder="جميع الحالات" />
+              <SelectValue placeholder="جميع النتائج" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">الكل</SelectItem>
-              <SelectItem value="pass">ناجح</SelectItem>
-              <SelectItem value="warning">تحذير</SelectItem>
-              <SelectItem value="fail">فشل</SelectItem>
+              <SelectItem value="pass">أعلى من 80%</SelectItem>
+              <SelectItem value="warning">50% - 80%</SelectItem>
+              <SelectItem value="fail">أقل من 50%</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -297,30 +297,30 @@ export default function Reports() {
           <div className="rounded-xl bg-card border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <FileText className="w-4 h-4 text-primary" />
-              <span className="text-xs text-muted-foreground font-arabic">إجمالي التدقيقات</span>
+              <span className="text-xs text-muted-foreground font-arabic">عدد الجولات</span>
             </div>
             <p className="text-2xl font-bold text-foreground font-mono">{stats.total}</p>
-          </div>
-          <div className="rounded-xl bg-card border border-border p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="w-4 h-4 text-emerald" />
-              <span className="text-xs text-muted-foreground font-arabic">ناجح</span>
-            </div>
-            <p className="text-2xl font-bold text-emerald font-mono">{stats.passed}</p>
-          </div>
-          <div className="rounded-xl bg-card border border-border p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="w-4 h-4 text-accent" />
-              <span className="text-xs text-muted-foreground font-arabic">تحذيرات</span>
-            </div>
-            <p className="text-2xl font-bold text-accent font-mono">{stats.warnings}</p>
           </div>
           <div className="rounded-xl bg-card border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="w-4 h-4 text-primary" />
               <span className="text-xs text-muted-foreground font-arabic">متوسط النتيجة</span>
             </div>
-            <p className="text-2xl font-bold text-foreground font-mono">{stats.avg}%</p>
+            <p className={`text-2xl font-bold font-mono ${stats.avg >= 80 ? "text-emerald" : stats.avg >= 50 ? "text-accent" : stats.avg > 0 ? "text-destructive" : "text-foreground"}`}>{stats.avg}%</p>
+          </div>
+          <div className="rounded-xl bg-card border border-border p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="w-4 h-4 text-emerald" />
+              <span className="text-xs text-muted-foreground font-arabic">فوق 80%</span>
+            </div>
+            <p className="text-2xl font-bold text-emerald font-mono">{stats.passed}</p>
+          </div>
+          <div className="rounded-xl bg-card border border-border p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-4 h-4 text-destructive" />
+              <span className="text-xs text-muted-foreground font-arabic">تحت 50%</span>
+            </div>
+            <p className="text-2xl font-bold text-destructive font-mono">{stats.failed}</p>
           </div>
         </div>
 
@@ -350,7 +350,7 @@ export default function Reports() {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl bg-card border border-border p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-4 font-arabic">توزيع الحالات</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-4 font-arabic">توزيع النتائج</h3>
             {statusPieData.length > 0 ? (
               <>
                 <ResponsiveContainer width="100%" height={180}>
@@ -381,8 +381,8 @@ export default function Reports() {
         {/* Detailed Audit Cards */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-foreground font-arabic">سجل التدقيقات التفصيلي — اضغط لعرض الأسئلة</h3>
-            <span className="text-[10px] text-muted-foreground font-mono">{filtered.length} تدقيق</span>
+            <h3 className="text-sm font-semibold text-foreground font-arabic">نتائج الجولات — اضغط لعرض الأسئلة والأجوبة</h3>
+            <span className="text-[10px] text-muted-foreground font-mono">{filtered.length} جولة</span>
           </div>
           {filtered.length === 0 ? (
             <div className="rounded-xl bg-card border border-border p-8 text-center text-muted-foreground text-sm font-arabic">
