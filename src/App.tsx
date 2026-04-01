@@ -16,7 +16,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import SLA from "./pages/SLA";
 import Support from "./pages/Support";
-import Reports from "./pages/Reports";
+
 import StoreSetup from "./pages/StoreSetup";
 import SystemStatus from "./pages/SystemStatus";
 import Settings from "./pages/Settings";
@@ -39,7 +39,7 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/dashboard/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+            
             <Route path="/dashboard/store-setup" element={<ProtectedRoute><StoreSetup /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/dashboard/book-appointment" element={<ProtectedRoute><AppointmentBooking /></ProtectedRoute>} />
