@@ -29,6 +29,8 @@ interface StoreData {
   operating_hours?: any;
   store_status?: string;
   whatsapp_enabled?: boolean;
+  custom_queries?: any;
+  query_status?: string;
 }
 
 interface SubData {
