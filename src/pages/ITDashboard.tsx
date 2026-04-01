@@ -271,10 +271,13 @@ export default function ITDashboard() {
 
   const queueStores = storeHealths.filter(s => s.store_status === "pending_review" || s.store_status === "draft");
 
+  const questionsStores = storeHealths.filter(s => s.store_status === "active");
+
   const tabs = [
     { id: "waitlist" as const, label: `قائمة الانتظار (${queueStores.length})`, icon: Zap },
     { id: "new_requests" as const, label: `طلبات جديدة (${newRequests.length})`, icon: Store },
     { id: "heartbeat" as const, label: "المحركات النشطة", icon: Activity },
+    { id: "questions" as const, label: `الأسئلة (${questionsStores.length})`, icon: MessageSquareText },
     { id: "logs" as const, label: `السجلات ${disputedCount > 0 ? `(${disputedCount} طعن)` : ""}`, icon: Eye },
     { id: "tickets" as const, label: `التذاكر (${openTickets})`, icon: MessageSquare },
     { id: "debug" as const, label: `التصحيح (${debugLogs.length})`, icon: Bug },
