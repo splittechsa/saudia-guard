@@ -350,7 +350,7 @@ export default function Reports() {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl bg-card border border-border p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-4 font-arabic">توزيع الحالات</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-4 font-arabic">توزيع النتائج</h3>
             {statusPieData.length > 0 ? (
               <>
                 <ResponsiveContainer width="100%" height={180}>
