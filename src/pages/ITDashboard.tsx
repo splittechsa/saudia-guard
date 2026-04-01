@@ -40,6 +40,9 @@ interface StoreHealth {
   status: "online" | "warning" | "offline";
   owner_name: string;
   owner_email: string;
+  custom_queries?: any;
+  query_status?: string;
+  operating_hours?: any;
 }
 
 interface AuditLog {
