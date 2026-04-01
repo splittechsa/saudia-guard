@@ -281,13 +281,13 @@ export default function Reports() {
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[140px] bg-card border-border">
-              <SelectValue placeholder="جميع الحالات" />
+              <SelectValue placeholder="جميع النتائج" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">الكل</SelectItem>
-              <SelectItem value="pass">ناجح</SelectItem>
-              <SelectItem value="warning">تحذير</SelectItem>
-              <SelectItem value="fail">فشل</SelectItem>
+              <SelectItem value="pass">أعلى من 80%</SelectItem>
+              <SelectItem value="warning">50% - 80%</SelectItem>
+              <SelectItem value="fail">أقل من 50%</SelectItem>
             </SelectContent>
           </Select>
         </div>
