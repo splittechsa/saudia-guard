@@ -67,6 +67,54 @@ export type Database = {
           },
         ]
       }
+      analytics_logs_archive: {
+        Row: {
+          ai_reasoning: string | null
+          archived_at: string
+          client_environment: Json | null
+          confidence_score: number | null
+          created_at: string
+          disputed: boolean | null
+          id: string
+          observations: Json | null
+          result: Json | null
+          score: number | null
+          status: string | null
+          store_id: string
+          summary: string | null
+        }
+        Insert: {
+          ai_reasoning?: string | null
+          archived_at?: string
+          client_environment?: Json | null
+          confidence_score?: number | null
+          created_at: string
+          disputed?: boolean | null
+          id: string
+          observations?: Json | null
+          result?: Json | null
+          score?: number | null
+          status?: string | null
+          store_id: string
+          summary?: string | null
+        }
+        Update: {
+          ai_reasoning?: string | null
+          archived_at?: string
+          client_environment?: Json | null
+          confidence_score?: number | null
+          created_at?: string
+          disputed?: boolean | null
+          id?: string
+          observations?: Json | null
+          result?: Json | null
+          score?: number | null
+          status?: string | null
+          store_id?: string
+          summary?: string | null
+        }
+        Relationships: []
+      }
       audit_trail: {
         Row: {
           action: string
