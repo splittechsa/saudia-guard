@@ -231,7 +231,7 @@ export default function Dashboard() {
             <h2 className="text-2xl font-bold text-foreground mb-3 font-arabic">أهلاً بك في ذكاء سبلت</h2>
             <p className="text-muted-foreground mb-2 font-arabic">جاري تجهيز نظام الرقابة الخاص بك.</p>
             <p className="text-sm text-muted-foreground mb-8 font-arabic">أكمل إعداد حسابك لبدء التدقيق الآلي بالذكاء الاصطناعي</p>
-            <div className="grid grid-cols-3 gap-3 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
               {[
                 { icon: CreditCard, label: "اختيار الباقة", desc: "حدد خطة تناسب احتياجاتك" },
                 { icon: Camera, label: "ربط الكاميرا", desc: "أضف بيانات RTSP الخاصة بك" },
