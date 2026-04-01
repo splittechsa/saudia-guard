@@ -159,6 +159,9 @@ export default function ITDashboard() {
         status,
         owner_name: ownerProfile?.name || "غير معروف",
         owner_email: ownerProfile?.email || "",
+        custom_queries: s.custom_queries,
+        query_status: s.query_status,
+        operating_hours: s.operating_hours,
       };
     });
     setStoreHealths(healthList);
