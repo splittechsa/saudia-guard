@@ -108,7 +108,7 @@ export default function DashboardLayout({ children, isAdmin = false }: { childre
         </Sheet>
       )}
 
-      <div className={`flex-1 transition-all md:${collapsed ? "mr-[72px]" : "mr-[260px]"}`}>
+      <div style={{ marginRight: isMobile ? 0 : collapsed ? 72 : 260 }} className="flex-1 transition-all">
         <header className="sticky top-0 z-40 glass-strong border-b border-border">
           <div className="flex items-center justify-between px-4 sm:px-6 py-3">
             <div className="flex items-center gap-3">
