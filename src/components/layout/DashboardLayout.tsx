@@ -11,7 +11,7 @@ import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 
 const navItems = [
   { icon: LayoutDashboard, label: "نظرة عامة", path: "/dashboard" },
-  { icon: BarChart3, label: "التقارير", path: "/dashboard/reports" },
+  
   { icon: Camera, label: "إعداد المتجر", path: "/dashboard/store-setup" },
   { icon: Activity, label: "التدقيقات", path: "/dashboard/audit" },
   { icon: MessageSquare, label: "الدعم الفني", path: "/support" },
