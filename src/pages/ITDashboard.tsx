@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { StatCardSkeleton, TableSkeleton } from "@/components/ui/carbon-skeleton";
 import TicketChat from "@/components/tickets/TicketChat";
 import { BroadcastBanner } from "@/components/dashboard/BroadcastBanner";
-
+import { OnboardingQueue } from "@/components/dashboard/OnboardingQueue";
 interface StoreHealth {
   id: string;
   name: string;
