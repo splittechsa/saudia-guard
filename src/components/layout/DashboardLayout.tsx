@@ -53,12 +53,8 @@ export default function DashboardLayout({ children, isAdmin = false }: { childre
   const bottomItems = isAdmin ? adminBottomNav : mobileBottomNav;
   const isMobile = useIsMobile();
 
-  // Close sidebar on route change
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [location.pathname]);
+  useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
 
-  // Prevent body scroll when sidebar open on mobile
   useEffect(() => {
     if (isMobile && sidebarOpen) {
       document.body.style.overflow = "hidden";
@@ -79,19 +75,17 @@ export default function DashboardLayout({ children, isAdmin = false }: { childre
   return (
     <div className="flex min-h-screen bg-background overflow-x-hidden" dir="rtl">
 
-      {/* ════════════════════════════════════════ */}
-      {/* DESKTOP SIDEBAR — hidden on mobile      */}
-      {/* ════════════════════════════════════════ */}
+      {/* ═══ DESKTOP SIDEBAR ═══ */}
       <aside
         style={{ width: collapsed ? 72 : 260 }}
-        className="fixed right-0 top-0 h-full z-50 glass-strong flex-col transition-all duration-300 hidden md:flex"
+        className="fixed right-0 top-0 h-full z-50 border-l border-border/20 bg-surface-1/95 backdrop-blur-2xl flex-col transition-all duration-300 hidden md:flex"
       >
-        <div className="flex items-center gap-3 p-5 border-b border-border">
+        <div className="flex items-center gap-3 p-5 border-b border-border/15">
           <img src={splitLogo} alt="Split Tech" className="w-8 h-8 shrink-0" />
           {!collapsed && (
             <div className="overflow-hidden">
               <h1 className="text-sm font-bold tracking-tight text-foreground">Split Tech</h1>
-              <p className="text-[10px] text-muted-foreground">ذكاء سبلت</p>
+              <p className="text-[10px] text-muted-foreground font-mono">ذكاء سبلت</p>
             </div>
           )}
         </div>
@@ -101,61 +95,58 @@ export default function DashboardLayout({ children, isAdmin = false }: { childre
             const active = location.pathname === item.path;
             return (
               <Link key={idx} to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group ${active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
+                  active 
+                    ? "bg-primary/[0.08] text-primary border border-primary/10" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-surface-3"
+                }`}>
                 <item.icon className={`w-5 h-5 shrink-0 ${active ? "text-primary" : ""}`} />
-                {!collapsed && <span className="text-sm font-medium font-arabic">{item.label}</span>}
+                {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
                 {active && <div className="mr-auto w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-3 border-t border-border space-y-1">
-          <button onClick={handleSignOut} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-secondary w-full transition-all">
+        <div className="p-3 border-t border-border/15 space-y-1">
+          <button onClick={handleSignOut} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/[0.06] w-full transition-all">
             <LogOut className="w-5 h-5" />
-            {!collapsed && <span className="text-sm font-arabic">تسجيل خروج</span>}
+            {!collapsed && <span className="text-sm">تسجيل خروج</span>}
           </button>
-          <button onClick={() => setCollapsed(!collapsed)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary w-full transition-all">
+          <button onClick={() => setCollapsed(!collapsed)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-3 w-full transition-all">
             <Menu className="w-5 h-5" />
-            {!collapsed && <span className="text-sm font-arabic">طي القائمة</span>}
+            {!collapsed && <span className="text-sm">طي القائمة</span>}
           </button>
         </div>
       </aside>
 
-      {/* ════════════════════════════════════════ */}
-      {/* MOBILE SIDEBAR DRAWER — overlay style   */}
-      {/* ════════════════════════════════════════ */}
+      {/* ═══ MOBILE SIDEBAR DRAWER ═══ */}
       {isMobile && (
         <>
-          {/* Backdrop */}
           <div
-            className={`fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm transition-opacity duration-300 md:hidden ${
+            className={`fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm transition-opacity duration-300 md:hidden ${
               sidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
             }`}
             onClick={() => setSidebarOpen(false)}
           />
-
-          {/* Drawer panel */}
           <div
-            className={`fixed top-0 right-0 h-full w-[85%] max-w-[320px] z-[70] bg-card border-l border-border flex flex-col transition-transform duration-300 ease-out md:hidden ${
+            className={`fixed top-0 right-0 h-full w-[85%] max-w-[320px] z-[70] bg-surface-1 border-l border-border/20 flex flex-col transition-transform duration-300 ease-out md:hidden ${
               sidebarOpen ? "translate-x-0" : "translate-x-full"
             }`}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border/15">
               <div className="flex items-center gap-3">
                 <img src={splitLogo} alt="Split Tech" className="w-8 h-8" />
                 <div>
                   <h1 className="text-sm font-bold text-foreground">Split Tech</h1>
-                  <p className="text-[10px] text-muted-foreground">ذكاء سبلت</p>
+                  <p className="text-[10px] text-muted-foreground font-mono">ذكاء سبلت</p>
                 </div>
               </div>
-              <button onClick={() => setSidebarOpen(false)} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground">
+              <button onClick={() => setSidebarOpen(false)} className="p-2 rounded-lg hover:bg-surface-3 text-muted-foreground">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Nav items */}
             <nav className="flex-1 px-4 py-3 space-y-1 overflow-y-auto">
               {items.map((item, idx) => {
                 const active = location.pathname === item.path;
@@ -163,57 +154,51 @@ export default function DashboardLayout({ children, isAdmin = false }: { childre
                   <Link key={idx} to={item.path}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                       active
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                        ? "bg-primary/[0.08] text-primary border border-primary/10"
+                        : "text-muted-foreground hover:text-foreground hover:bg-surface-3"
                     }`}>
                     <item.icon className={`w-5 h-5 shrink-0 ${active ? "text-primary" : ""}`} />
-                    <span className="text-sm font-medium font-arabic">{item.label}</span>
+                    <span className="text-sm font-medium">{item.label}</span>
                     {active && <div className="mr-auto w-2 h-2 rounded-full bg-primary" />}
                   </Link>
                 );
               })}
             </nav>
 
-            {/* Footer */}
-            <div className="px-4 py-4 border-t border-border" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}>
-              {/* Profile */}
+            <div className="px-4 py-4 border-t border-border/15" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}>
               <div className="flex items-center gap-3 mb-3 px-2">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-emerald flex items-center justify-center text-xs font-bold text-primary-foreground">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/80 to-emerald/60 flex items-center justify-center text-xs font-bold text-primary-foreground">
                   {initials}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-foreground truncate font-arabic">{profile?.full_name || "المستخدم"}</p>
+                  <p className="text-sm font-semibold text-foreground truncate">{profile?.full_name || "المستخدم"}</p>
                   <p className="text-[10px] text-muted-foreground truncate">{profile?.email}</p>
                 </div>
               </div>
-              <button onClick={handleSignOut} className="flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 w-full transition-all">
+              <button onClick={handleSignOut} className="flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/[0.06] w-full transition-all">
                 <LogOut className="w-5 h-5" />
-                <span className="text-sm font-arabic">تسجيل خروج</span>
+                <span className="text-sm">تسجيل خروج</span>
               </button>
             </div>
           </div>
         </>
       )}
 
-      {/* ════════════════════════════════════════ */}
-      {/* MAIN CONTENT AREA                       */}
-      {/* ════════════════════════════════════════ */}
+      {/* ═══ MAIN CONTENT AREA ═══ */}
       <div
         className="flex-1 flex flex-col min-h-screen w-full"
         style={{ marginRight: isMobile ? 0 : collapsed ? 72 : 260 }}
       >
-        {/* Top header */}
-        <header className="sticky top-0 z-40 glass-strong border-b border-border">
+        <header className="sticky top-0 z-40 border-b border-border/15 bg-background/80 backdrop-blur-2xl">
           <div className="flex items-center justify-between px-4 md:px-6 py-3">
             <div className="flex items-center gap-3 min-w-0">
-              {/* Mobile hamburger */}
               {isMobile && (
-                <button onClick={() => setSidebarOpen(true)} className="p-2 -mr-1 rounded-lg hover:bg-secondary text-foreground shrink-0">
+                <button onClick={() => setSidebarOpen(true)} className="p-2 -mr-1 rounded-lg hover:bg-surface-3 text-foreground shrink-0">
                   <Menu className="w-5 h-5" />
                 </button>
               )}
               <div className="min-w-0">
-                <h2 className="text-sm md:text-lg font-semibold text-foreground font-arabic truncate">
+                <h2 className="text-sm md:text-lg font-semibold text-foreground truncate">
                   {isAdmin ? "لوحة تحكم المالك" : "لوحة التحكم"}
                 </h2>
                 <p className="text-[10px] text-muted-foreground font-mono hidden md:block">
@@ -224,24 +209,21 @@ export default function DashboardLayout({ children, isAdmin = false }: { childre
             <div className="flex items-center gap-2">
               <ConnectionPulse />
               <NotificationCenter />
-              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-gradient-to-br from-primary to-emerald flex items-center justify-center text-[10px] md:text-xs font-bold text-primary-foreground shrink-0">
+              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-gradient-to-br from-primary/80 to-emerald/60 flex items-center justify-center text-[10px] md:text-xs font-bold text-primary-foreground shrink-0">
                 {initials}
               </div>
             </div>
           </div>
         </header>
 
-        {/* Page content */}
-        <main className={`flex-1 px-4 md:px-6 py-4 md:py-6 carbon-grid ${isMobile ? "pb-24" : ""}`}>
+        <main className={`flex-1 px-4 md:px-6 py-4 md:py-6 ${isMobile ? "pb-24" : ""}`}>
           {children}
         </main>
 
-        {/* ════════════════════════════════════════ */}
-        {/* MOBILE BOTTOM NAVIGATION BAR            */}
-        {/* ════════════════════════════════════════ */}
+        {/* ═══ MOBILE BOTTOM NAV ═══ */}
         {isMobile && (
           <nav
-            className="fixed bottom-0 left-0 right-0 z-50 glass-strong border-t border-border md:hidden"
+            className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/15 bg-surface-1/95 backdrop-blur-2xl md:hidden"
             style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
           >
             <div className="flex items-center justify-between px-6 py-2">
@@ -250,7 +232,7 @@ export default function DashboardLayout({ children, isAdmin = false }: { childre
                 return (
                   <Link key={idx} to={item.path} className="flex flex-col items-center gap-1 py-1 min-w-[56px]">
                     <item.icon className={`w-5 h-5 transition-colors ${active ? "text-primary" : "text-muted-foreground"}`} />
-                    <span className={`text-[10px] font-arabic transition-colors ${active ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+                    <span className={`text-[10px] transition-colors ${active ? "text-primary font-semibold" : "text-muted-foreground"}`}>
                       {item.label}
                     </span>
                     {active && <div className="w-1 h-1 rounded-full bg-primary" />}

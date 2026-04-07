@@ -10,7 +10,10 @@ import LandingFooter from "@/components/landing/LandingFooter";
 
 export default function Index() {
   return (
-    <div dir="rtl" className="min-h-screen bg-background overflow-hidden">
+    <div dir="rtl" className="min-h-screen bg-background overflow-hidden relative">
+      {/* Scan line effect */}
+      <div className="scan-line" />
+
       <LandingNav />
       <HeroSection />
       <ProblemSection />
