@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard, Shield, Settings, LogOut,
+  LayoutDashboard, Settings, LogOut,
   Users, Activity, MessageSquare, Camera, Server, Menu, X,
   Home, Headphones, Cog, Sliders
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import splitLogo from "@/assets/split-logo-icon.png";
 import { ConnectionPulse } from "@/components/ui/connection-pulse";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -86,13 +87,11 @@ export default function DashboardLayout({ children, isAdmin = false }: { childre
         className="fixed right-0 top-0 h-full z-50 glass-strong flex-col transition-all duration-300 hidden md:flex"
       >
         <div className="flex items-center gap-3 p-5 border-b border-border">
-          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <Shield className="w-5 h-5 text-primary-foreground" />
-          </div>
+          <img src={splitLogo} alt="Split Tech" className="w-8 h-8 shrink-0" />
           {!collapsed && (
             <div className="overflow-hidden">
-              <h1 className="text-sm font-bold tracking-tight text-foreground font-arabic">ذكاء سبلت</h1>
-              <p className="text-[10px] text-muted-foreground tracking-widest font-arabic">التدقيق التشغيلي</p>
+              <h1 className="text-sm font-bold tracking-tight text-foreground">Split Tech</h1>
+              <p className="text-[10px] text-muted-foreground">ذكاء سبلت</p>
             </div>
           )}
         </div>
@@ -145,12 +144,10 @@ export default function DashboardLayout({ children, isAdmin = false }: { childre
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-primary-foreground" />
-                </div>
+                <img src={splitLogo} alt="Split Tech" className="w-8 h-8" />
                 <div>
-                  <h1 className="text-sm font-bold text-foreground font-arabic">ذكاء سبلت</h1>
-                  <p className="text-[10px] text-muted-foreground font-arabic">التدقيق التشغيلي</p>
+                  <h1 className="text-sm font-bold text-foreground">Split Tech</h1>
+                  <p className="text-[10px] text-muted-foreground">ذكاء سبلت</p>
                 </div>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground">
