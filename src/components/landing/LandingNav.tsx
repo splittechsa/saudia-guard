@@ -23,23 +23,22 @@ export default function LandingNav() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border/30 bg-background/60 backdrop-blur-2xl">
+    <nav className="sticky top-0 z-50 border-b border-border/15 glass-strong">
       <div className="max-w-6xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3">
         <button onClick={() => navigate("/")} className="flex items-center gap-2.5 group">
-          <img src={splitLogo} alt="Split Tech" className="w-7 h-7 transition-transform group-hover:scale-110" />
+          <img src={splitLogo} alt="Split Tech" className="w-7 h-7 transition-transform duration-300 group-hover:scale-110" />
           <div className="flex flex-col leading-none">
             <span className="text-sm font-bold text-foreground tracking-tight">Split Tech</span>
             <span className="text-[9px] text-muted-foreground font-mono tracking-widest">ذكاء سبلت</span>
           </div>
         </button>
 
-        {/* Desktop links */}
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden md:flex items-center gap-7">
           {navLinks.map((link) => (
             <button
               key={link.label}
               onClick={() => scrollTo(link.href)}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
             >
               {link.label}
             </button>
@@ -50,7 +49,7 @@ export default function LandingNav() {
           <Button variant="ghost" onClick={() => navigate("/login")} className="text-muted-foreground hover:text-foreground text-sm">
             تسجيل الدخول
           </Button>
-          <Button onClick={() => navigate("/signup")} className="bg-primary text-primary-foreground hover:bg-primary/90 text-sm h-9 glow-lime">
+          <Button onClick={() => navigate("/signup")} className="bg-primary text-primary-foreground hover:bg-primary/90 text-sm h-9 btn-neon">
             ابدأ مجاناً
           </Button>
         </div>
@@ -61,13 +60,13 @@ export default function LandingNav() {
       </div>
 
       {open && (
-        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="sm:hidden border-t border-border/30 px-4 py-3 space-y-2 bg-background/95 backdrop-blur-xl">
+        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="sm:hidden border-t border-border/15 px-4 py-3 space-y-2 glass-strong">
           {navLinks.map((link) => (
             <button key={link.label} onClick={() => scrollTo(link.href)} className="block w-full text-right text-sm text-muted-foreground py-2 hover:text-foreground transition-colors">
               {link.label}
             </button>
           ))}
-          <div className="pt-2 border-t border-border/30 space-y-2">
+          <div className="pt-2 border-t border-border/15 space-y-2">
             <Button variant="ghost" onClick={() => { navigate("/login"); setOpen(false); }} className="w-full justify-center text-muted-foreground text-sm">
               تسجيل الدخول
             </Button>

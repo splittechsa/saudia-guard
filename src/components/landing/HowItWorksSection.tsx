@@ -28,6 +28,16 @@ const steps = [
   },
 ];
 
+const containerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.1 } },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 28 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
+};
+
 export default function HowItWorksSection() {
   return (
     <section id="how-it-works" className="max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-28">
@@ -35,26 +45,30 @@ export default function HowItWorksSection() {
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
         className="text-center mb-14"
       >
-        <h2 className="text-2xl sm:text-4xl font-bold text-foreground">
+        <h2 className="text-2xl sm:text-4xl font-bold text-foreground tracking-tight-ar">
           كيف يعمل <span className="text-gradient-lime">ذكاء سبلت؟</span>
         </h2>
       </motion.div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={containerVariants}
+        className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5"
+      >
         {steps.map((s, i) => (
           <motion.div
             key={i}
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: i * 0.12, duration: 0.5 }}
-            className="group relative rounded-xl border border-border/30 bg-card/30 p-6 hover:border-primary/20 transition-all duration-500"
+            variants={cardVariants}
+            className="group relative rounded-xl border border-border/20 bg-card/30 p-6 hover:border-primary/15 transition-all duration-500 hover-glow border-glow-card"
           >
-            <span className="absolute top-4 left-4 text-[10px] font-mono text-primary/40 font-bold">{s.num}</span>
+            <span className="absolute top-4 left-4 text-[10px] font-mono text-primary/30 font-bold">{s.num}</span>
 
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/[0.03] border border-primary/10 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/8 to-primary/[0.02] border border-primary/8 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform duration-300">
               <s.icon className="w-5 h-5 text-primary" />
             </div>
 
@@ -62,11 +76,11 @@ export default function HowItWorksSection() {
             <p className="text-sm text-muted-foreground leading-relaxed">{s.text}</p>
 
             {i < steps.length - 1 && (
-              <div className="hidden lg:block absolute top-1/2 -left-3 w-6 h-px bg-gradient-to-l from-primary/20 to-transparent" />
+              <div className="hidden lg:block absolute top-1/2 -left-3 w-6 h-px bg-gradient-to-l from-primary/15 to-transparent" />
             )}
           </motion.div>
         ))}
-      </div>
+      </motion.div>
     </section>
   );
 }

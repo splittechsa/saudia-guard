@@ -46,6 +46,16 @@ const plans = [
   },
 ];
 
+const containerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.1 } },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 28 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
+};
+
 export default function PricingSection() {
   const navigate = useNavigate();
 
@@ -55,26 +65,30 @@ export default function PricingSection() {
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
         className="text-center mb-14"
       >
-        <h2 className="text-2xl sm:text-4xl font-bold text-foreground">
+        <h2 className="text-2xl sm:text-4xl font-bold text-foreground tracking-tight-ar">
           باقات تناسب <span className="text-gradient-lime">كل نشاط</span>
         </h2>
         <p className="text-sm text-muted-foreground mt-3">ابدأ بدون عقود سنوية. ألغِ في أي وقت.</p>
       </motion.div>
 
-      <div className="grid md:grid-cols-3 gap-5 items-stretch">
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={containerVariants}
+        className="grid md:grid-cols-3 gap-5 items-stretch"
+      >
         {plans.map((plan, i) => (
           <motion.div
             key={i}
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: i * 0.1 }}
-            className={`relative rounded-2xl p-6 sm:p-7 transition-all duration-500 hover-glow ${
+            variants={cardVariants}
+            className={`relative rounded-2xl p-6 sm:p-7 transition-all duration-500 hover-glow border-glow-card ${
               plan.popular
-                ? "border-2 border-primary/40 bg-card/80 scale-[1.02] glow-lime"
-                : "border border-border/30 bg-card/40"
+                ? "border border-primary/30 bg-card/60 glow-lime"
+                : "border border-border/20 bg-card/30"
             }`}
           >
             {plan.popular && (
@@ -85,7 +99,7 @@ export default function PricingSection() {
             )}
 
             <div className="mb-6">
-              <span className="text-[10px] font-mono text-primary/50 tracking-widest">{plan.nameEn}</span>
+              <span className="text-[10px] font-mono text-primary/40 tracking-widest">{plan.nameEn}</span>
               <h3 className="text-lg font-bold text-foreground mt-1">{plan.name}</h3>
               <div className="flex items-baseline gap-1 mt-3">
                 <span className="text-3xl sm:text-4xl font-bold text-foreground">{plan.price}</span>
@@ -106,15 +120,15 @@ export default function PricingSection() {
               onClick={() => navigate("/signup")}
               className={`w-full h-11 text-sm font-semibold transition-all ${
                 plan.popular
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                  : "bg-secondary text-foreground hover:bg-secondary/80 border border-border/30"
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90 btn-neon"
+                  : "bg-secondary text-foreground hover:bg-secondary/80 border border-border/20"
               }`}
             >
               {plan.cta}
             </Button>
           </motion.div>
         ))}
-      </div>
+      </motion.div>
     </section>
   );
 }
