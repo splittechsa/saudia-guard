@@ -19,6 +19,16 @@ const problems = [
   },
 ];
 
+const containerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.1 } },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
+};
+
 export default function ProblemSection() {
   return (
     <section className="max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-28">
@@ -26,9 +36,10 @@ export default function ProblemSection() {
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
         className="text-center mb-14"
       >
-        <h2 className="text-2xl sm:text-4xl font-bold text-foreground">
+        <h2 className="text-2xl sm:text-4xl font-bold text-foreground tracking-tight-ar">
           ماذا يحدث في متجرك <span className="text-gradient-lime">الآن؟</span>
         </h2>
         <p className="text-sm text-muted-foreground mt-3 max-w-lg mx-auto">
@@ -36,24 +47,27 @@ export default function ProblemSection() {
         </p>
       </motion.div>
 
-      <div className="grid md:grid-cols-3 gap-4 sm:gap-5">
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={containerVariants}
+        className="grid md:grid-cols-3 gap-4 sm:gap-5"
+      >
         {problems.map((p, i) => (
           <motion.div
             key={i}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: i * 0.1 }}
-            className="group relative rounded-xl border border-border/40 bg-card/50 p-6 sm:p-7 hover:border-primary/30 hover:bg-card/80 transition-all duration-500 hover-glow"
+            variants={cardVariants}
+            className="group relative rounded-xl border border-border/30 bg-card/40 p-6 sm:p-7 hover:border-primary/20 transition-all duration-500 hover-glow border-glow-card"
           >
-            <div className="w-10 h-10 rounded-xl bg-primary/[0.08] border border-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary/[0.12] transition-colors">
+            <div className="w-10 h-10 rounded-xl bg-primary/[0.06] border border-primary/8 flex items-center justify-center mb-5 group-hover:bg-primary/[0.1] transition-colors duration-300">
               <p.icon className="w-5 h-5 text-primary" />
             </div>
             <h3 className="text-base font-bold text-foreground mb-2">{p.title}</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">{p.desc}</p>
           </motion.div>
         ))}
-      </div>
+      </motion.div>
     </section>
   );
 }
