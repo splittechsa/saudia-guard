@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard, Settings, LogOut,
+  LayoutDashboard, Shield, Settings, LogOut,
   Users, Activity, MessageSquare, Camera, Server, Menu, X,
   Home, Headphones, Cog, Sliders
 } from "lucide-react";
