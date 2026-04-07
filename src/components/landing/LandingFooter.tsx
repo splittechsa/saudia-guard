@@ -18,7 +18,7 @@ export default function LandingFooter() {
               رقابة ذكية. قرارات أذكى.
             </p>
             <p className="text-xs text-muted-foreground/50 mt-3">
-              splittechsa@outlook.com
+              info@splittech.sa
             </p>
           </div>
 
