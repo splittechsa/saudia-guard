@@ -22,6 +22,7 @@ import SystemStatus from "./pages/SystemStatus";
 import Settings from "./pages/Settings";
 import AppointmentBooking from "./pages/AppointmentBooking";
 import PostPaymentSuccess from "./pages/PostPaymentSuccess";
+import PaymentPage from "./pages/PaymentPage";
 import AuditReports from "./pages/AuditReports";
 import StoreControl from "./pages/StoreControl";
 import NotFound from "./pages/NotFound";
