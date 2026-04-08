@@ -22,6 +22,7 @@ import SystemStatus from "./pages/SystemStatus";
 import Settings from "./pages/Settings";
 import AppointmentBooking from "./pages/AppointmentBooking";
 import PostPaymentSuccess from "./pages/PostPaymentSuccess";
+import PaymentPage from "./pages/PaymentPage";
 import AuditReports from "./pages/AuditReports";
 import StoreControl from "./pages/StoreControl";
 import NotFound from "./pages/NotFound";
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="/dashboard/audit" element={<ProtectedRoute><AuditReports /></ProtectedRoute>} />
             <Route path="/dashboard/store-control" element={<ProtectedRoute><StoreControl /></ProtectedRoute>} />
             <Route path="/dashboard/book-appointment" element={<ProtectedRoute><AppointmentBooking /></ProtectedRoute>} />
+            <Route path="/dashboard/payment" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
             <Route path="/dashboard/payment-success" element={<ProtectedRoute><PostPaymentSuccess /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requiredRole="super_owner"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/system-status" element={<ProtectedRoute requiredRole="super_owner"><SystemStatus /></ProtectedRoute>} />

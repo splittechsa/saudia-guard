@@ -169,6 +169,53 @@ export type Database = {
         }
         Relationships: []
       }
+      payments_history: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          status: string
+          subscription_id: string | null
+          tap_charge_id: string
+          tap_response: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          id?: string
+          status?: string
+          subscription_id?: string | null
+          tap_charge_id: string
+          tap_response?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          status?: string
+          subscription_id?: string | null
+          tap_charge_id?: string
+          tap_response?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_history_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
