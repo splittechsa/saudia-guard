@@ -175,6 +175,8 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          payment_method: string | null
+          receipt_url: string | null
           status: string
           subscription_id: string | null
           tap_charge_id: string
@@ -187,6 +189,8 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          payment_method?: string | null
+          receipt_url?: string | null
           status?: string
           subscription_id?: string | null
           tap_charge_id: string
@@ -199,6 +203,8 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          payment_method?: string | null
+          receipt_url?: string | null
           status?: string
           subscription_id?: string | null
           tap_charge_id?: string
