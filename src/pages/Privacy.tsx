@@ -76,13 +76,13 @@ export default function Privacy() {
           <section>
             <h2 className="text-lg font-bold text-foreground mb-3 font-arabic">5. حقوقك</h2>
             <p className="font-arabic">
-              يحق لك طلب الوصول إلى بياناتك الشخصية أو تصحيحها أو حذفها في أي وقت. يمكنك التواصل معنا عبر البريد الإلكتروني: splittechsa@outlook.com
+              يحق لك طلب الوصول إلى بياناتك الشخصية أو تصحيحها أو حذفها في أي وقت. يمكنك التواصل معنا عبر البريد الإلكتروني: info@splittech.sa
             </p>
           </section>
 
           <section className="pt-4 border-t border-border">
             <p className="font-arabic text-xs text-muted-foreground/60">
-              للتواصل: splittechsa@outlook.com
+              للتواصل: info@splittech.sa
             </p>
           </section>
         </div>
