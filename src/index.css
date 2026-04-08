@@ -48,11 +48,11 @@
     --tech-blue: 210 100% 56%;
     --tech-blue-foreground: 0 0% 100%;
 
-    --surface-0: 0 0% 0%;
-    --surface-1: 0 0% 3%;
-    --surface-2: 0 0% 4%;
-    --surface-3: 0 0% 6%;
-    --surface-4: 0 0% 9%;
+    --surface-0: 0 0% 3.5%;
+    --surface-1: 0 0% 5%;
+    --surface-2: 0 0% 7%;
+    --surface-3: 0 0% 9%;
+    --surface-4: 0 0% 12%;
 
     --sidebar-background: 0 0% 2%;
     --sidebar-foreground: 0 0% 70%;

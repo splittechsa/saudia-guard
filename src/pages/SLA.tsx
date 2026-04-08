@@ -90,7 +90,7 @@ export default function SLA() {
 
           <section className="pt-4 border-t border-border">
             <p className="font-arabic text-xs text-muted-foreground/60">
-              للتواصل: splittechsa@outlook.com
+              للتواصل: info@splittech.sa
             </p>
           </section>
         </div>
