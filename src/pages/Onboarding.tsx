@@ -82,9 +82,9 @@ export default function Onboarding() {
       return;
     }
 
-    toast.success("تم إرسال طلب الاشتراك! سيتم مراجعته من الإدارة.");
+    toast.success("تم إرسال طلب الاشتراك! جاري التوجيه للدفع...");
     setSaving(false);
-    navigate("/dashboard");
+    navigate(`/dashboard/payment?tier=${tierKeys[selectedTier]}`);
   };
 
   return (
