@@ -59,7 +59,7 @@ export default function HowItWorksSection() {
         <h2 className="text-2xl sm:text-4xl font-bold text-foreground tracking-tight-ar">
           كيف يعمل <span className="text-gradient-lime">ذكاء سبلت؟</span>
         </h2>
-        <p className="text-sm text-muted-foreground/40 mt-3 max-w-md mx-auto">
+        <p className="text-sm text-muted-foreground mt-3 max-w-md mx-auto">
           أربع خطوات فقط — من الكاميرا إلى التقرير
         </p>
       </motion.div>
@@ -87,12 +87,12 @@ export default function HowItWorksSection() {
               {/* Step number */}
               <span className="text-[40px] font-bold text-foreground/[0.03] absolute -top-2 -right-1 font-mono select-none">{s.num}</span>
 
-              <div className="w-12 h-12 rounded-xl bg-foreground/[0.03] border border-border/10 flex items-center justify-center mb-5 group-hover:border-primary/15 group-hover:bg-primary/[0.05] transition-all duration-300">
-                <s.icon className="w-5 h-5 text-muted-foreground/40 group-hover:text-primary/70 transition-colors duration-300" />
+              <div className="w-12 h-12 rounded-xl bg-foreground/[0.05] border border-border/15 flex items-center justify-center mb-5 group-hover:border-primary/20 group-hover:bg-primary/[0.08] transition-all duration-300">
+                <s.icon className="w-5 h-5 text-muted-foreground/60 group-hover:text-primary transition-colors duration-300" />
               </div>
 
               <h3 className="text-base font-bold text-foreground mb-2">{s.title}</h3>
-              <p className="text-[13px] text-muted-foreground/45 leading-relaxed">{s.text}</p>
+              <p className="text-[13px] text-muted-foreground leading-relaxed">{s.text}</p>
             </div>
           </motion.div>
         ))}

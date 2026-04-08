@@ -49,15 +49,15 @@ export default function LandingFooter() {
                 <span className="text-[8px] text-muted-foreground/30 font-mono tracking-[0.2em] mt-0.5">INTELLIGENT AUDITING</span>
               </div>
             </div>
-            <p className="text-[13px] text-muted-foreground/50 leading-relaxed max-w-[280px] mb-6">
+            <p className="text-[13px] text-muted-foreground leading-relaxed max-w-[280px] mb-6">
               ذكاء اصطناعي يحول كاميرات المراقبة إلى نظام رقابة تشغيلية متكامل — من سيرفرات داخل المملكة.
             </p>
             <div className="space-y-2.5">
-              <a href="mailto:info@splittech.sa" className="flex items-center gap-2 text-[12px] text-muted-foreground/40 hover:text-primary/70 transition-colors group">
-                <Mail className="w-3.5 h-3.5 group-hover:text-primary/60" />
+              <a href="mailto:info@splittech.sa" className="flex items-center gap-2 text-[12px] text-muted-foreground hover:text-primary transition-colors group">
+                <Mail className="w-3.5 h-3.5 group-hover:text-primary" />
                 info@splittech.sa
               </a>
-              <div className="flex items-center gap-2 text-[12px] text-muted-foreground/30">
+              <div className="flex items-center gap-2 text-[12px] text-muted-foreground/70">
                 <MapPin className="w-3.5 h-3.5" />
                 الدمام، المملكة العربية السعودية
               </div>
@@ -72,7 +72,7 @@ export default function LandingFooter() {
                 <li key={link.label}>
                   <button
                     onClick={() => scrollTo(link.href)}
-                    className="text-[13px] text-muted-foreground/40 hover:text-foreground/80 transition-colors duration-200"
+                    className="text-[13px] text-muted-foreground hover:text-foreground transition-colors duration-200"
                   >
                     {link.label}
                   </button>
@@ -86,7 +86,7 @@ export default function LandingFooter() {
             <ul className="space-y-3">
               {footerLinks.legal.map((link) => (
                 <li key={link.label}>
-                  <Link to={link.href} className="text-[13px] text-muted-foreground/40 hover:text-foreground/80 transition-colors duration-200">
+                  <Link to={link.href} className="text-[13px] text-muted-foreground hover:text-foreground transition-colors duration-200">
                     {link.label}
                   </Link>
                 </li>
@@ -99,7 +99,7 @@ export default function LandingFooter() {
             <ul className="space-y-3">
               {footerLinks.support.map((link) => (
                 <li key={link.label}>
-                  <Link to={link.href} className="text-[13px] text-muted-foreground/40 hover:text-foreground/80 transition-colors duration-200">
+                  <Link to={link.href} className="text-[13px] text-muted-foreground hover:text-foreground transition-colors duration-200">
                     {link.label}
                   </Link>
                 </li>
@@ -111,16 +111,16 @@ export default function LandingFooter() {
           <div className="lg:col-span-2">
             <h4 className="text-[10px] font-mono text-primary/40 uppercase tracking-[0.2em] mb-5">الأمان</h4>
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-[11px] text-muted-foreground/35">
-                <Shield className="w-3.5 h-3.5 text-emerald/50" />
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70">
+                <Shield className="w-3.5 h-3.5 text-emerald/70" />
                 <span>تشفير E2E</span>
               </div>
-              <div className="flex items-center gap-2 text-[11px] text-muted-foreground/35">
-                <Zap className="w-3.5 h-3.5 text-primary/50" />
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70">
+                <Zap className="w-3.5 h-3.5 text-primary/70" />
                 <span>SLA 99.9%</span>
               </div>
-              <div className="flex items-center gap-2 text-[11px] text-muted-foreground/35">
-                <MapPin className="w-3.5 h-3.5 text-gold/50" />
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70">
+                <MapPin className="w-3.5 h-3.5 text-gold/70" />
                 <span>سيرفرات سعودية</span>
               </div>
             </div>
@@ -130,9 +130,9 @@ export default function LandingFooter() {
         {/* Tech stack marquee */}
         <div className="border-t border-border/8 py-5">
           <div className="flex items-center justify-center gap-8 sm:gap-12 flex-wrap">
-            <span className="text-[9px] font-mono text-muted-foreground/20 uppercase tracking-[0.2em]">Powered by</span>
+            <span className="text-[9px] font-mono text-muted-foreground/40 uppercase tracking-[0.2em]">Powered by</span>
             {techStack.map((t) => (
-              <span key={t} className="text-[10px] font-mono text-muted-foreground/15 uppercase tracking-[0.15em] hover:text-muted-foreground/30 transition-colors cursor-default">
+              <span key={t} className="text-[10px] font-mono text-muted-foreground/35 uppercase tracking-[0.15em] hover:text-muted-foreground/60 transition-colors cursor-default">
                 {t}
               </span>
             ))}
@@ -140,17 +140,17 @@ export default function LandingFooter() {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-border/6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-[11px] text-muted-foreground/20">
+        <div className="border-t border-border/10 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-[11px] text-muted-foreground/50">
             &copy; {new Date().getFullYear()} مؤسسة سبلت تيك لتقنية المعلومات. جميع الحقوق محفوظة.
           </p>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald animate-pulse-live" />
-              <span className="text-[10px] font-mono text-emerald/50">All Systems Operational</span>
+              <span className="text-[10px] font-mono text-emerald/70">All Systems Operational</span>
             </div>
-            <span className="w-px h-3 bg-border/10" />
-            <span className="text-[10px] font-mono text-muted-foreground/15 tracking-wider">DAMMAM — KSA</span>
+            <span className="w-px h-3 bg-border/20" />
+            <span className="text-[10px] font-mono text-muted-foreground/40 tracking-wider">DAMMAM — KSA</span>
           </div>
         </div>
       </div>

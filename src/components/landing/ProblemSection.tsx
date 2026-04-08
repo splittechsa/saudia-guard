@@ -53,7 +53,7 @@ export default function ProblemSection() {
         <h2 className="text-2xl sm:text-4xl font-bold text-foreground tracking-tight-ar">
           ماذا يحدث في متجرك <span className="text-gradient-lime">الآن؟</span>
         </h2>
-        <p className="text-sm text-muted-foreground/50 mt-3 max-w-lg mx-auto">
+        <p className="text-sm text-muted-foreground mt-3 max-w-lg mx-auto">
           كاميراتك تسجل 24 ساعة. لكن من يشاهد؟
         </p>
       </motion.div>
@@ -80,12 +80,12 @@ export default function ProblemSection() {
                 <p.icon className="w-5 h-5 text-primary/70" />
               </div>
               <h3 className="text-base font-bold text-foreground mb-2">{p.title}</h3>
-              <p className="text-[13px] text-muted-foreground/50 leading-relaxed mb-5">{p.desc}</p>
+              <p className="text-[13px] text-muted-foreground leading-relaxed mb-5">{p.desc}</p>
 
               {/* Stat */}
               <div className="pt-4 border-t border-border/8 flex items-baseline gap-2">
                 <span className="text-2xl font-bold text-primary/80">{p.stat}</span>
-                <span className="text-[11px] text-muted-foreground/30">{p.statLabel}</span>
+                <span className="text-[11px] text-muted-foreground">{p.statLabel}</span>
               </div>
             </div>
           </motion.div>

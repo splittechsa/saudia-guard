@@ -50,7 +50,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.6 }}
-          className="text-base sm:text-lg text-muted-foreground/60 mt-7 max-w-2xl mx-auto leading-relaxed px-2"
+          className="text-base sm:text-lg text-muted-foreground mt-7 max-w-2xl mx-auto leading-relaxed px-2"
         >
           نظام رقابة تشغيلية ذكي يحلل كاميرات المراقبة الحالية — يرصد، يحلل، ويقدم تقارير فورية بالعربية من سيرفرات داخل المملكة.
         </motion.p>
@@ -74,9 +74,9 @@ export default function HeroSection() {
             onClick={scrollToDemo}
             variant="ghost"
             size="lg"
-            className="w-full sm:w-auto text-muted-foreground/60 hover:text-foreground hover:bg-foreground/[0.03] h-12 px-8 text-[14px] group rounded-xl"
+            className="w-full sm:w-auto text-muted-foreground hover:text-foreground hover:bg-foreground/[0.03] h-12 px-8 text-[14px] group rounded-xl"
           >
-            <Play className="w-3.5 h-3.5 me-2 text-primary/70 group-hover:scale-110 transition-transform" />
+            <Play className="w-3.5 h-3.5 me-2 text-primary group-hover:scale-110 transition-transform" />
             شاهد كيف يعمل
           </Button>
         </motion.div>
@@ -90,12 +90,12 @@ export default function HeroSection() {
         >
           {stats.map((s, i) => (
             <div key={i} className="flex items-center gap-3 group">
-              <div className="w-9 h-9 rounded-lg bg-foreground/[0.03] border border-border/10 flex items-center justify-center group-hover:border-primary/15 transition-colors">
-                <s.icon className="w-4 h-4 text-muted-foreground/30 group-hover:text-primary/50 transition-colors" />
+              <div className="w-9 h-9 rounded-lg bg-foreground/[0.05] border border-border/20 flex items-center justify-center group-hover:border-primary/20 transition-colors">
+                <s.icon className="w-4 h-4 text-muted-foreground/60 group-hover:text-primary transition-colors" />
               </div>
               <div className="text-right">
                 <p className="text-lg sm:text-xl font-bold text-foreground leading-none">{s.value}</p>
-                <p className="text-[10px] text-muted-foreground/30 mt-0.5">{s.label}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{s.label}</p>
               </div>
             </div>
           ))}
@@ -109,10 +109,10 @@ export default function HeroSection() {
         transition={{ delay: 0.7 }}
         className="mt-20 pt-8 border-t border-border/8"
       >
-        <p className="text-[9px] text-muted-foreground/20 font-mono uppercase tracking-[0.3em] mb-5">TRUSTED TECHNOLOGY</p>
+        <p className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-[0.3em] mb-5">TRUSTED TECHNOLOGY</p>
         <div className="flex items-center justify-center gap-8 sm:gap-14 flex-wrap">
           {["Google Cloud", "Vertex AI", "Hikvision", "Dahua", "EZVIZ", "Intel"].map((p) => (
-            <span key={p} className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.15em] text-muted-foreground/15 hover:text-muted-foreground/35 transition-colors duration-300 cursor-default">{p}</span>
+            <span key={p} className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.15em] text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors duration-300 cursor-default">{p}</span>
           ))}
         </div>
       </motion.div>
