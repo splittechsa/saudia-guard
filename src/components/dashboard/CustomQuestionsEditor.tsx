@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Plus, Trash2, Save, GripVertical, MessageSquareText, 
-  CheckCircle2, XCircle, Clock, AlertCircle, Sparkles 
+import {
+  Plus, Trash2, Save, GripVertical, MessageSquareText,
+  CheckCircle2, XCircle, Clock, AlertCircle, Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,14 +10,90 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-// ... (نفس الـ Interfaces السابقة)
+interface CustomQuestion {
+  id: string;
+  question: string;
+  status: "pending" | "approved" | "rejected";
+}
 
-export function CustomQuestionsEditor({ storeId, initialQueries, queryStatus, isAdmin = false, onSave }: Props) {
-  const [questions, setQuestions] = useState<CustomQuestion[]>([]);
+interface Props {
+  storeId: string;
+  initialQueries?: CustomQuestion[];
+  queryStatus?: string;
+  isAdmin?: boolean;
+  onSave?: () => void;
+}
+
+export function CustomQuestionsEditor({ storeId, initialQueries = [], queryStatus, isAdmin = false, onSave }: Props) {
+  const [questions, setQuestions] = useState<CustomQuestion[]>(initialQueries);
   const [newQuestion, setNewQuestion] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // ... (نفس منطق الـ useEffect والـ Handlers السابقة مع تحسينات طفيفة)
+  useEffect(() => {
+    if (initialQueries.length > 0) {
+      setQuestions(initialQueries);
+    }
+  }, [initialQueries]);
+
+  const addQuestion = () => {
+    if (!newQuestion.trim()) return;
+
+    if (questions.length >= 20) {
+      toast.error("الحد الأقصى 20 سؤال");
+      return;
+    }
+
+    const newQ: CustomQuestion = {
+      id: Date.now().toString(),
+      question: newQuestion.trim(),
+      status: isAdmin ? "approved" : "pending"
+    };
+
+    setQuestions(prev => [...prev, newQ]);
+    setNewQuestion("");
+  };
+
+  const updateQuestion = (id: string, question: string) => {
+    setQuestions(prev => prev.map(q =>
+      q.id === id ? { ...q, question, status: isAdmin ? q.status : "pending" } : q
+    ));
+  };
+
+  const removeQuestion = (id: string) => {
+    setQuestions(prev => prev.filter(q => q.id !== id));
+  };
+
+  const toggleStatus = (id: string) => {
+    if (!isAdmin) return;
+
+    setQuestions(prev => prev.map(q => {
+      if (q.id === id) {
+        const nextStatus = q.status === "approved" ? "rejected" :
+                          q.status === "rejected" ? "pending" : "approved";
+        return { ...q, status: nextStatus };
+      }
+      return q;
+    }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("stores").update({
+        custom_queries: questions,
+        query_status: isAdmin ? "approved" : "pending_review"
+      }).eq("id", storeId);
+
+      if (error) throw error;
+
+      toast.success(isAdmin ? "تم حفظ التغييرات" : "تم إرسال الأسئلة للمراجعة");
+      onSave?.();
+    } catch (error) {
+      toast.error("فشل في حفظ الأسئلة");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const approvedCount = questions.filter(q => q.status === "approved").length;
   const pendingCount = questions.filter(q => q.status === "pending").length;
@@ -38,7 +114,7 @@ export function CustomQuestionsEditor({ storeId, initialQueries, queryStatus, is
             <p className="text-xs text-muted-foreground font-arabic">حدد الأسئلة التي سيقوم المحرك بتحليلها</p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Badge className="bg-emerald/10 text-emerald border-emerald/20 px-3 py-1 rounded-lg font-bold font-arabic">
             <CheckCircle2 className="w-3 h-3 ml-1.5" /> {approvedCount} مفعّل
@@ -104,13 +180,13 @@ export function CustomQuestionsEditor({ storeId, initialQueries, queryStatus, is
                       q.status === "rejected" ? "text-destructive border-destructive/20 bg-destructive/5" :
                       "text-accent border-accent/20 bg-accent/5"
                     }`}>
-                       {q.status === "approved" ? <CheckCircle2 className="w-3.5 h-3.5" /> : 
+                       {q.status === "approved" ? <CheckCircle2 className="w-3.5 h-3.5" /> :
                         q.status === "rejected" ? <XCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
                     </div>
                   )}
-                  
-                  <button 
-                    onClick={() => removeQuestion(q.id)} 
+
+                  <button
+                    onClick={() => removeQuestion(q.id)}
                     className="p-2 rounded-xl text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-all opacity-0 group-hover:opacity-100"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -134,14 +210,14 @@ export function CustomQuestionsEditor({ storeId, initialQueries, queryStatus, is
               className="h-12 rounded-2xl bg-secondary/50 border-border font-arabic pr-4 focus:border-primary/50 transition-all"
             />
           </div>
-          <Button 
-            onClick={addQuestion} 
+          <Button
+            onClick={addQuestion}
             className="h-12 px-6 bg-primary text-primary-foreground font-bold rounded-2xl shadow-lg shadow-primary/10 hover:scale-105 active:scale-95 transition-all"
           >
             <Plus className="w-5 h-5" />
           </Button>
         </div>
-        
+
         {!isAdmin && pendingCount > 0 && (
           <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2 mt-4 text-[10px] text-accent bg-accent/5 p-2 rounded-xl border border-accent/10 font-arabic">
              <AlertCircle className="w-3 h-3" />
@@ -150,13 +226,13 @@ export function CustomQuestionsEditor({ storeId, initialQueries, queryStatus, is
         )}
       </div>
 
-      <Button 
-        onClick={handleSave} 
-        disabled={saving} 
+      <Button
+        onClick={handleSave}
+        disabled={saving}
         className="w-full h-14 bg-foreground text-background hover:bg-foreground/90 font-black text-lg rounded-2xl shadow-xl transition-all relative overflow-hidden group"
       >
         <div className="relative z-10 flex items-center justify-center gap-2">
-           <Save className="w-5 h-5" /> 
+           <Save className="w-5 h-5" />
            {saving ? "جاري مزامنة القوانين..." : "حفظ وتفعيل معايير الذكاء"}
         </div>
         {/* Shine animation */}

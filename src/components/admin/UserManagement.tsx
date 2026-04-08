@@ -8,7 +8,19 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-// ... (نفس الـ Interfaces والـ ROLE_LABELS السابقة)
+interface UserRow {
+  id: string;
+  email: string;
+  full_name: string | null;
+  created_at: string;
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  merchant: "تاجر",
+  it_support: "دعم فني",
+  customer_support: "دعم عملاء",
+  super_owner: "مدير عام"
+};
 
 const ROLE_THEMES: Record<string, { bg: string, text: string, icon: any }> = {
   merchant: { bg: "bg-primary/10", text: "text-primary border-primary/20", icon: Users },
@@ -23,11 +35,67 @@ export default function UserManagement() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // ... (نفس دالة fetchUsers السابقة)
+  const fetchUsers = async () => {
+    try {
+      const { data: usersData, error: usersError } = await supabase
+        .from("profiles")
+        .select("id, email, full_name, created_at")
+        .order("created_at", { ascending: false });
+
+      if (usersError) throw usersError;
+
+      const { data: rolesData, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id, role");
+
+      if (rolesError) throw rolesError;
+
+      const rolesMap: Record<string, string> = {};
+      rolesData?.forEach((r: any) => {
+        rolesMap[r.user_id] = r.role;
+      });
+
+      setUsers(usersData || []);
+      setRoles(rolesMap);
+    } catch (error) {
+      toast.error("فشل في تحميل بيانات المستخدمين");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    try {
+      // Delete existing role
+      await supabase.from("user_roles").delete().eq("user_id", userId);
+
+      // Insert new role
+      const { error } = await supabase.from("user_roles").insert({
+        user_id: userId,
+        role: newRole
+      });
+
+      if (error) throw error;
+
+      setRoles(prev => ({ ...prev, [userId]: newRole }));
+      toast.success("تم تحديث الرتبة بنجاح");
+    } catch (error) {
+      toast.error("فشل في تحديث الرتبة");
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const filtered = users.filter(user =>
+    user.email.toLowerCase().includes(search.toLowerCase()) ||
+    (user.full_name && user.full_name.toLowerCase().includes(search.toLowerCase()))
+  );
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" dir="rtl">
-      
+
       {/* Header مع شريط البحث */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-secondary/30 p-6 rounded-[2rem] border border-border/50">
         <div className="flex items-center gap-4">
@@ -62,7 +130,7 @@ export default function UserManagement() {
             {filtered.map((user) => {
               const role = roles[user.id] || "merchant";
               const theme = ROLE_THEMES[role] || ROLE_THEMES.merchant;
-              
+
               return (
                 <motion.div
                   key={user.id}
@@ -82,7 +150,7 @@ export default function UserManagement() {
                            <theme.icon className={`w-3 h-3 ${theme.text.split(' ')[0]}`} />
                         </div>
                       </div>
-                      
+
                       <div className="min-w-0 space-y-1">
                         <div className="flex items-center gap-2">
                            <p className="text-sm font-black text-foreground font-arabic truncate">{user.full_name || "مستخدم غير معروف"}</p>
@@ -99,7 +167,7 @@ export default function UserManagement() {
                       <Badge variant="outline" className={`px-3 py-1 rounded-lg text-[9px] font-bold font-arabic border-none ${theme.bg} ${theme.text}`}>
                         {ROLE_LABELS[role] || role}
                       </Badge>
-                      
+
                       <Select value={role} onValueChange={(val) => handleRoleChange(user.id, val)}>
                         <SelectTrigger className="w-32 h-8 text-[10px] font-bold font-arabic bg-background border-border/50 rounded-lg">
                           <SelectValue />
@@ -118,7 +186,7 @@ export default function UserManagement() {
               );
             })}
           </AnimatePresence>
-          
+
           {filtered.length === 0 && (
             <div className="text-center py-20 opacity-30">
                <Search className="w-12 h-12 mx-auto mb-4" />
