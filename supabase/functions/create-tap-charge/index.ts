@@ -27,25 +27,29 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const userId = claimsData.claims.sub;
 
     const { amount, currency, tier, token_id, subscription_id } = await req.json();
 
     if (!amount || !token_id) {
       return new Response(
         JSON.stringify({ error: "Missing required fields: amount, token_id" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (typeof amount !== "number" || amount <= 0 || amount > 10000) {
+      return new Response(
+        JSON.stringify({ error: "Invalid amount" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -53,14 +57,10 @@ serve(async (req) => {
     if (!tapSecretKey) {
       return new Response(
         JSON.stringify({ error: "Payment gateway not configured" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Create charge via Tap API
     const chargePayload = {
       amount,
       currency: currency || "SAR",
@@ -69,7 +69,7 @@ serve(async (req) => {
       save_card: false,
       description: `Split Tech subscription - ${tier || "pro"}`,
       metadata: {
-        user_id: user.id,
+        user_id: userId,
         subscription_id: subscription_id || "",
         tier: tier || "",
       },
@@ -95,28 +95,42 @@ serve(async (req) => {
 
     if (!tapResponse.ok) {
       console.error("Tap API error:", chargeData);
+
+      // Map Tap error codes to user-friendly Arabic messages
+      const errorCode = chargeData.errors?.[0]?.code || "";
+      const errorMessages: Record<string, string> = {
+        "card_declined": "البطاقة مرفوضة — يرجى استخدام بطاقة أخرى",
+        "insufficient_funds": "رصيد غير كافي في البطاقة",
+        "expired_card": "البطاقة منتهية الصلاحية",
+        "invalid_card": "رقم البطاقة غير صحيح",
+        "processing_error": "خطأ في معالجة الدفع — حاول مرة أخرى",
+      };
+
       return new Response(
-        JSON.stringify({ error: "Payment failed", details: chargeData }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({
+          error: errorMessages[errorCode] || "فشل الدفع — يرجى المحاولة مرة أخرى",
+          code: errorCode,
+          details: chargeData,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Log payment in history using service role
+    // Log payment with rich metadata
     const serviceClient = createClient(
       supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
     await serviceClient.from("payments_history").insert({
-      user_id: user.id,
+      user_id: userId,
       subscription_id: subscription_id || null,
       tap_charge_id: chargeData.id,
       amount,
       currency: currency || "SAR",
       status: chargeData.status,
+      payment_method: chargeData.source?.payment_method || chargeData.source?.type || "card",
+      receipt_url: chargeData.receipt?.url || null,
       tap_response: chargeData,
     });
 
@@ -126,19 +140,13 @@ serve(async (req) => {
         status: chargeData.status,
         redirect_url: chargeData.transaction?.url || null,
       }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
