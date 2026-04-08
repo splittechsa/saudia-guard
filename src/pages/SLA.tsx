@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ShieldCheck, ArrowLeft, Timer, Activity, Zap, Scale } from "lucide-react";
+import { ShieldCheck, ArrowLeft, Timer, Activity, Zap, Scale, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function SLA() {
@@ -74,7 +74,7 @@ export default function SLA() {
                   <tr className="bg-secondary/50 border-b border-border">
                     <th className="p-4 text-foreground font-bold">مستوى الخطورة</th>
                     <th className="p-4 text-foreground font-bold">وقت الاستجابة</th>
-                    <h className="p-4 text-foreground font-bold">المستهدف للحل</th>
+                    <th className="p-4 text-foreground font-bold">المستهدف للحل</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">

@@ -1,7 +1,7 @@
 // OAuth integration using Supabase
 // This service provides OAuth redirects through Supabase only.
 
-import { supabase } from "../supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 
 type SignInOptions = {
   redirect_uri?: string;
