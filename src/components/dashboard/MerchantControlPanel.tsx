@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Power, MessageCircle, Clock, Gauge, Info } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Power, MessageCircle, Clock, Gauge, Info, Zap, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -53,11 +54,13 @@ export function MerchantControlPanel({ store, subscriptionTier, onUpdate }: Prop
       update.operating_hours = { start: startHour, end: endHour, max: maxHours, tier: subscriptionTier };
     }
     const { error } = await supabase.from("stores").update(update).eq("id", store.id);
-    if (error) toast.error("فشل التحديث");
-    else {
+    
+    if (error) {
+      toast.error("فشل التحديث الفني");
+    } else {
       if (field === "is_active") setIsActive(value);
       if (field === "whatsapp_enabled") setWhatsappEnabled(value);
-      toast.success(value ? "تم التفعيل" : "تم الإيقاف");
+      toast.success(value ? "تم تشغيل النظام بنجاح" : "تم إيقاف التشغيل مؤقتاً");
       onUpdate?.();
     }
     setSaving(false);
@@ -65,135 +68,157 @@ export function MerchantControlPanel({ store, subscriptionTier, onUpdate }: Prop
 
   const handleSaveSchedule = async () => {
     if (isOverLimit) {
-      toast.error(`تجاوزت الحد الأقصى (${maxHours} ساعة) — قم بترقية الباقة`);
+      toast.error(`تجاوزت الحد المسموح لباقة ${subscriptionTier.toUpperCase()}`);
       return;
     }
     setSaving(true);
     const { error } = await supabase.from("stores").update({
       operating_hours: { start: startHour, end: endHour, max: maxHours, tier: subscriptionTier },
     }).eq("id", store.id);
-    if (error) toast.error("فشل حفظ الجدول");
-    else { toast.success("تم حفظ جدول التشغيل"); onUpdate?.(); }
+    
+    if (error) toast.error("خطأ في حفظ الجدول");
+    else { toast.success("تم تحديث جدول التشغيل الآمن"); onUpdate?.(); }
     setSaving(false);
   };
 
   return (
-    <div className="rounded-xl bg-card border border-border p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground font-arabic flex items-center gap-2">
-          <Gauge className="w-4 h-4 text-primary" /> مركز تحكم المتجر
-        </h3>
-        <Badge variant="outline" className="text-[10px] text-accent border-accent/30 font-arabic">
+    <div className="glass-strong rounded-[2rem] border border-border p-6 space-y-6 relative overflow-hidden" dir="rtl">
+      {/* Header */}
+      <div className="flex items-center justify-between relative z-10">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-primary/10 text-primary shadow-inner">
+            <Gauge className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-foreground font-arabic tracking-tight">قمرة تحكم المتجر</h3>
+            <p className="text-[10px] text-muted-foreground font-arabic uppercase tracking-widest">Active Store Management</p>
+          </div>
+        </div>
+        <Badge variant="outline" className="px-3 py-1 rounded-lg border-primary/20 bg-primary/5 text-primary font-bold font-arabic">
           {store.name}
         </Badge>
       </div>
 
-      {/* Master Switches */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="flex items-center justify-between rounded-lg bg-secondary/50 border border-border p-4">
+      {/* Master Toggle Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <motion.div whileHover={{ scale: 1.02 }} className="flex items-center justify-between rounded-2xl bg-secondary/30 border border-border/50 p-4 transition-all hover:border-emerald/30">
           <div className="flex items-center gap-3">
-            <Power className={`w-5 h-5 ${isActive ? "text-emerald" : "text-muted-foreground"}`} />
+            <div className={`p-2 rounded-lg ${isActive ? "bg-emerald/10 text-emerald" : "bg-muted text-muted-foreground"}`}>
+              <Power className="w-5 h-5" />
+            </div>
             <div>
-              <p className="text-sm font-semibold text-foreground font-arabic">التدقيق الذكي</p>
-              <p className="text-[10px] text-muted-foreground font-arabic">تشغيل/إيقاف المحرك</p>
+              <p className="text-sm font-bold text-foreground font-arabic">التدقيق الذكي</p>
+              <p className="text-[10px] text-muted-foreground font-arabic">AI Engine State</p>
             </div>
           </div>
           <Switch checked={isActive} onCheckedChange={(v) => handleToggle("is_active", v)} disabled={saving} />
-        </div>
-        <div className="flex items-center justify-between rounded-lg bg-secondary/50 border border-border p-4">
+        </motion.div>
+
+        <motion.div whileHover={{ scale: 1.02 }} className="flex items-center justify-between rounded-2xl bg-secondary/30 border border-border/50 p-4 transition-all hover:border-primary/30">
           <div className="flex items-center gap-3">
-            <MessageCircle className={`w-5 h-5 ${whatsappEnabled ? "text-emerald" : "text-muted-foreground"}`} />
+            <div className={`p-2 rounded-lg ${whatsappEnabled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+              <MessageCircle className="w-5 h-5" />
+            </div>
             <div>
-              <p className="text-sm font-semibold text-foreground font-arabic">تقارير واتساب</p>
-              <p className="text-[10px] text-muted-foreground font-arabic">ملخص يومي تلقائي</p>
+              <p className="text-sm font-bold text-foreground font-arabic">تقارير واتساب</p>
+              <p className="text-[10px] text-muted-foreground font-arabic">Live Feed Updates</p>
             </div>
           </div>
           <Switch checked={whatsappEnabled} onCheckedChange={(v) => handleToggle("whatsapp_enabled", v)} disabled={saving} />
-        </div>
+        </motion.div>
       </div>
 
-      {/* Quota Tracker */}
-      <div className="space-y-2">
+      {/* Quota Section */}
+      <div className="space-y-3 bg-secondary/20 p-5 rounded-2xl border border-border/50">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground font-arabic">حصة الساعات</span>
-          <span className={`font-mono font-bold ${isOverLimit ? "text-destructive" : "text-emerald"}`}>
-            {selectedHours}/{maxHours} ساعة
+          <div className="flex items-center gap-2">
+            <Zap className={`w-3.5 h-3.5 ${isOverLimit ? "text-destructive" : "text-primary"}`} />
+            <span className="font-bold text-foreground font-arabic">حصة التشغيل اليومية</span>
+          </div>
+          <span className={`font-mono font-black ${isOverLimit ? "text-destructive" : "text-emerald"}`}>
+            {selectedHours} <span className="text-[10px] opacity-40">/ {maxHours}H</span>
           </span>
         </div>
-        <Progress value={usagePercent} className={`h-2.5 ${isOverLimit ? "[&>div]:bg-destructive" : ""}`} />
-        <p className="text-[10px] text-muted-foreground font-arabic">
-          باقة {subscriptionTier === "basic" ? "أساسي" : subscriptionTier === "pro" ? "احترافي" : "مؤسسي"} — الحد الأقصى {maxHours} ساعة يومياً
+        <Progress value={usagePercent} className={`h-2 rounded-full ${isOverLimit ? "[&>div]:bg-destructive" : "[&>div]:bg-primary shadow-[0_0_10px_rgba(163,230,53,0.2)]"}`} />
+        <p className="text-[9px] text-muted-foreground font-arabic text-center italic">
+          باقة {subscriptionTier === "basic" ? "أساسية" : subscriptionTier === "pro" ? "احترافية" : "مؤسسات"} · الحد المسموح: {maxHours} ساعة
         </p>
       </div>
 
-      {/* Time Range Picker */}
-      <div className="space-y-3">
+      {/* Scheduling Area */}
+      <div className="space-y-4 border-t border-border/50 pt-6">
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-primary" />
-          <h4 className="text-xs font-semibold text-foreground font-arabic">جدول التشغيل</h4>
+          <h4 className="text-xs font-black text-foreground font-arabic uppercase tracking-tighter">جدولة ساعات الرقابة</h4>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] text-muted-foreground font-arabic block mb-1">وقت البدء</label>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-muted-foreground mr-1">بداية البث</label>
             <select
               value={startHour}
               onChange={(e) => setStartHour(Number(e.target.value))}
-              className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground font-arabic"
+              className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-xs text-foreground font-bold font-arabic outline-none focus:border-primary/50 transition-all"
             >
-              {HOURS.map((h) => <option key={h} value={h}>{formatHour(h)}</option>)}
+              {HOURS.map((h) => <option key={h} value={h} className="bg-card">{formatHour(h)}</option>)}
             </select>
           </div>
-          <div>
-            <label className="text-[10px] text-muted-foreground font-arabic block mb-1">وقت الانتهاء</label>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-muted-foreground mr-1">نهاية البث</label>
             <select
               value={endHour}
               onChange={(e) => setEndHour(Number(e.target.value))}
-              className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground font-arabic"
+              className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-xs text-foreground font-bold font-arabic outline-none focus:border-primary/50 transition-all"
             >
-              {HOURS.map((h) => <option key={h} value={h}>{formatHour(h)}</option>)}
+              {HOURS.map((h) => <option key={h} value={h} className="bg-card">{formatHour(h)}</option>)}
             </select>
           </div>
         </div>
 
-        {/* Visual Timeline */}
-        <div className="flex gap-0.5 h-5">
-          {HOURS.map((h) => {
-            const isActiveHour = endHour > startHour
-              ? h >= startHour && h < endHour
-              : h >= startHour || h < endHour;
-            return (
-              <div
-                key={h}
-                className={`flex-1 rounded-sm transition-colors ${
-                  isActiveHour
-                    ? isOverLimit ? "bg-destructive/60" : "bg-primary/60"
-                    : "bg-secondary/50"
-                }`}
-                title={formatHour(h)}
-              />
-            );
-          })}
-        </div>
-        <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
-          <span>12 ص</span><span>6 ص</span><span>12 م</span><span>6 م</span><span>12 ص</span>
+        {/* Dynamic Timeline Bar */}
+        <div className="space-y-2">
+          <div className="flex gap-0.5 h-4 items-end">
+            {HOURS.map((h) => {
+              const isActiveHour = endHour > startHour ? h >= startHour && h < endHour : h >= startHour || h < endHour;
+              return (
+                <div
+                  key={h}
+                  className={`flex-1 rounded-sm transition-all duration-300 ${
+                    isActiveHour
+                      ? isOverLimit ? "bg-destructive/40 h-full" : "bg-primary/50 h-full"
+                      : "bg-muted/10 h-2/3"
+                  }`}
+                />
+              );
+            })}
+          </div>
+          <div className="flex justify-between text-[8px] text-muted-foreground font-mono font-bold opacity-50 px-0.5">
+            <span>12A</span><span>6A</span><span>12P</span><span>6P</span><span>12A</span>
+          </div>
         </div>
 
+        {/* Warning Badge */}
         {isOverLimit && (
-          <div className="flex items-center gap-2 rounded-lg bg-destructive/10 border border-destructive/30 p-3">
-            <Info className="w-4 h-4 text-destructive shrink-0" />
-            <p className="text-xs text-destructive font-arabic">
-              تجاوزت الحد الأقصى ({maxHours} ساعة). قلل الساعات أو قم بترقية الباقة.
+          <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3 rounded-xl bg-destructive/10 border border-destructive/20 p-3">
+            <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+            <p className="text-[10px] text-destructive font-arabic leading-relaxed font-bold">
+              تجاوزت سقف الباقة ({maxHours} ساعة). يرجى الترقية أو تقليص المدة.
             </p>
-          </div>
+          </motion.div>
         )}
 
-        <button
+        <Button
           onClick={handleSaveSchedule}
           disabled={saving || isOverLimit}
-          className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm font-arabic font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-black font-arabic text-sm shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
         >
-          {saving ? "جاري الحفظ..." : "حفظ جدول التشغيل"}
-        </button>
+          {saving ? "جاري المزامنة..." : "تأكيد وتحديث الجدول الآمن"}
+        </Button>
+      </div>
+
+      {/* Decorative Background Icon */}
+      <div className="absolute -bottom-6 -left-6 p-4 opacity-[0.02] pointer-events-none">
+        <CheckCircle2 className="w-24 h-24" />
       </div>
     </div>
   );

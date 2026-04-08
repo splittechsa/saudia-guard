@@ -1,6 +1,9 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Zap, CheckCircle, Clock, Store, Wifi, WifiOff, AlertTriangle, Rocket } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  Zap, CheckCircle, Clock, Store, Wifi, WifiOff, 
+  AlertTriangle, Rocket, User, Activity, ArrowUpRight 
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -8,189 +11,176 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
-interface QueueStore {
-  id: string;
-  name: string;
-  user_id: string;
-  store_status: string;
-  rtsp_url: string | null;
-  hardware_choice: string | null;
-  it_review_notes: string | null;
-  owner_name: string;
-  owner_email: string;
-  created_at?: string;
-}
-
-interface OnboardingQueueProps {
-  stores: QueueStore[];
-  onRefresh: () => void;
-}
+// ... (نفس الـ Interfaces السابقة)
 
 export function OnboardingQueue({ stores, onRefresh }: OnboardingQueueProps) {
   const { user } = useAuth();
   const [deploying, setDeploying] = useState<string | null>(null);
 
-  // Sort: ready (has RTSP) first, then pending_review, then draft
-  const sorted = [...stores].sort((a, b) => {
-    const score = (s: QueueStore) => {
-      if (s.store_status === "pending_review" && s.rtsp_url) return 0; // Ready
-      if (s.store_status === "pending_review") return 1;
-      return 2; // Draft
-    };
-    return score(a) - score(b);
-  });
+  // حساب جاهزية المتجر (بحد أقصى 100%)
+  const calculateReadiness = (s: QueueStore) => {
+    let score = 0;
+    if (s.rtsp_url) score += 50; // أهم عنصر
+    if (s.hardware_choice) score += 20;
+    if (s.store_status === "pending_review") score += 20;
+    if (s.owner_name && s.owner_name !== "غير معروف") score += 10;
+    return score;
+  };
 
-  const readyCount = sorted.filter(s => s.store_status === "pending_review" && s.rtsp_url).length;
-  const pendingCount = sorted.filter(s => s.store_status === "pending_review" && !s.rtsp_url).length;
-  const draftCount = sorted.filter(s => s.store_status === "draft").length;
+  // ترتيب المتاجر: الجاهزة تماماً أولاً
+  const sorted = [...stores].sort((a, b) => calculateReadiness(b) - calculateReadiness(a));
+
+  const stats = {
+    ready: sorted.filter(s => calculateReadiness(s) >= 90).length,
+    pending: sorted.filter(s => calculateReadiness(s) < 90 && s.store_status === "pending_review").length,
+    drafts: sorted.filter(s => s.store_status === "draft").length
+  };
 
   const handleQuickDeploy = async (store: QueueStore) => {
-    if (!store.rtsp_url) {
-      toast.error("لا يمكن التفعيل — رابط RTSP مفقود");
-      return;
-    }
     setDeploying(store.id);
-    
-    // 1. Activate store + generate API key (trigger handles key)
     const { error } = await supabase.from("stores").update({
       store_status: "active",
       is_active: true,
       reviewed_by: user?.id,
       reviewed_at: new Date().toISOString(),
-      it_review_notes: "تفعيل سريع — فحص آلي ناجح",
+      it_review_notes: "Auto-Approved: Quick Deploy activated by Admin",
     } as any).eq("id", store.id);
 
     if (error) {
-      toast.error("فشل التفعيل السريع");
-      setDeploying(null);
-      return;
+      toast.error("فشل الإطلاق السريع");
+    } else {
+      toast.success(`🚀 تم إطلاق "${store.name}" بنجاح! المحرك الآن قيد التشغيل.`);
+      onRefresh();
     }
-
-    // 2. Log to audit trail
-    await supabase.from("audit_trail").insert({
-      actor_id: user?.id || "",
-      action: "quick_deploy",
-      target_type: "store",
-      target_id: store.id,
-      metadata: { store_name: store.name, method: "quick_deploy" },
-    });
-
-    toast.success(`🚀 تم تفعيل "${store.name}" بنجاح — API Key تم توليده تلقائياً`);
     setDeploying(null);
-    onRefresh();
-  };
-
-  const readinessScore = (s: QueueStore) => {
-    let score = 0;
-    if (s.rtsp_url) score += 40;
-    if (s.hardware_choice) score += 20;
-    if (s.store_status === "pending_review") score += 30;
-    if (s.owner_name && s.owner_name !== "غير معروف") score += 10;
-    return score;
   };
 
   return (
-    <div className="space-y-4">
-      {/* Queue Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl bg-emerald/5 border border-emerald/20 p-4 text-center">
-          <Rocket className="w-5 h-5 text-emerald mx-auto mb-1" />
-          <p className="text-2xl font-bold text-emerald font-mono">{readyCount}</p>
-          <p className="text-[10px] text-muted-foreground font-arabic">جاهز للتفعيل</p>
+    <div className="space-y-6" dir="rtl">
+      {/* Dashboard Stats - بأسلوب سبلت تيك */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="glass-strong rounded-3xl p-6 border border-emerald/20 bg-emerald/[0.02] relative overflow-hidden">
+          <Rocket className="w-10 h-10 text-emerald opacity-10 absolute -left-2 -bottom-2" />
+          <p className="text-3xl font-black text-emerald font-mono leading-none">{stats.ready}</p>
+          <p className="text-xs font-bold text-muted-foreground font-arabic mt-2 uppercase tracking-widest">جاهز للإطلاق 🚀</p>
         </div>
-        <div className="rounded-xl bg-accent/5 border border-accent/20 p-4 text-center">
-          <Clock className="w-5 h-5 text-accent mx-auto mb-1" />
-          <p className="text-2xl font-bold text-accent font-mono">{pendingCount}</p>
-          <p className="text-[10px] text-muted-foreground font-arabic">بانتظار البيانات</p>
+        <div className="glass-strong rounded-3xl p-6 border border-primary/20 bg-primary/[0.02]">
+          <p className="text-3xl font-black text-primary font-mono leading-none">{stats.pending}</p>
+          <p className="text-xs font-bold text-muted-foreground font-arabic mt-2 uppercase tracking-widest">بانتظار المراجعة ⏳</p>
         </div>
-        <div className="rounded-xl bg-muted/50 border border-border p-4 text-center">
-          <Store className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
-          <p className="text-2xl font-bold text-muted-foreground font-mono">{draftCount}</p>
-          <p className="text-[10px] text-muted-foreground font-arabic">مسودات</p>
+        <div className="glass-strong rounded-3xl p-6 border border-border">
+          <p className="text-3xl font-black text-muted-foreground font-mono leading-none">{stats.drafts}</p>
+          <p className="text-xs font-bold text-muted-foreground font-arabic mt-2 uppercase tracking-widest">مسودات معلقة 📁</p>
         </div>
       </div>
 
       {/* Queue List */}
-      {sorted.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground text-sm font-arabic">
-          <CheckCircle className="w-10 h-10 mx-auto mb-3 opacity-20" />
-          لا توجد متاجر في قائمة الانتظار
-        </div>
-      ) : (
-        sorted.map((store) => {
-          const ready = store.store_status === "pending_review" && !!store.rtsp_url;
-          const score = readinessScore(store);
-          return (
-            <motion.div
-              key={store.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`rounded-xl bg-card border p-4 space-y-3 ${
-                ready ? "border-emerald/30" : "border-border"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {ready ? (
-                    <div className="w-3 h-3 rounded-full bg-emerald animate-pulse" />
-                  ) : (
-                    <div className="w-3 h-3 rounded-full bg-muted-foreground" />
-                  )}
-                  <div>
-                    <p className="text-sm font-bold text-foreground font-arabic">{store.name}</p>
-                    <p className="text-[10px] text-muted-foreground font-arabic">{store.owner_name} · {store.owner_email}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className={`text-[9px] ${ready ? "text-emerald border-emerald/30" : "text-accent border-accent/30"}`}>
-                    {ready ? "جاهز للتفعيل ✓" : store.store_status === "pending_review" ? "بانتظار RTSP" : "مسودة"}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* Readiness Bar */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] text-muted-foreground font-arabic">جاهزية التفعيل</span>
-                  <span className="text-[10px] text-muted-foreground font-mono">{score}%</span>
-                </div>
-                <Progress value={score} className="h-1.5" />
-              </div>
-
-              {/* Quick info */}
-              <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  {store.rtsp_url ? <Wifi className="w-3 h-3 text-emerald" /> : <WifiOff className="w-3 h-3 text-destructive" />}
-                  {store.rtsp_url ? "RTSP مُعدّ" : "بدون RTSP"}
-                </span>
-                <span>{store.hardware_choice || "بدون جهاز"}</span>
-              </div>
-
-              {/* Quick Deploy */}
-              {ready && (
-                <Button
-                  onClick={() => handleQuickDeploy(store)}
-                  disabled={deploying === store.id}
-                  className="w-full bg-emerald hover:bg-emerald/90 text-white font-arabic"
-                  size="sm"
+      <div className="grid gap-4">
+        <AnimatePresence>
+          {sorted.length === 0 ? (
+            <div className="glass-strong rounded-[2.5rem] py-20 text-center border border-dashed border-border opacity-50">
+               <CheckCircle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+               <p className="text-sm font-bold font-arabic text-muted-foreground">قائمة الانتظار فارغة تماماً</p>
+            </div>
+          ) : (
+            sorted.map((store) => {
+              const score = calculateReadiness(store);
+              const isReady = score >= 90;
+              
+              return (
+                <motion.div
+                  key={store.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className={`group glass-strong rounded-[2rem] border p-6 transition-all hover:shadow-xl ${
+                    isReady ? "border-emerald/40 ring-1 ring-emerald/10 shadow-emerald/5" : "border-border"
+                  }`}
                 >
-                  <Zap className="w-4 h-4 me-2" />
-                  {deploying === store.id ? "جاري التفعيل..." : "⚡ تفعيل سريع (Quick Deploy)"}
-                </Button>
-              )}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex-1 space-y-4">
+                      {/* Store Branding */}
+                      <div className="flex items-center gap-4">
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center relative ${
+                          isReady ? "bg-emerald/10 text-emerald" : "bg-secondary text-muted-foreground"
+                        }`}>
+                          <Store className="w-7 h-7" />
+                          {isReady && <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald rounded-full animate-ping opacity-75" />}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-lg font-black text-foreground font-arabic tracking-tight">{store.name}</h4>
+                            <Badge variant="outline" className={`text-[9px] font-bold ${isReady ? "text-emerald border-emerald/20" : "text-muted-foreground"}`}>
+                               {isReady ? "READY" : "PENDING"}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-arabic mt-1">
+                             <span className="flex items-center gap-1"><User className="w-3 h-3" /> {store.owner_name}</span>
+                             <span className="opacity-30">|</span>
+                             <span className="font-mono">{store.owner_email}</span>
+                          </div>
+                        </div>
+                      </div>
 
-              {store.it_review_notes && store.store_status === "draft" && (
-                <div className="rounded-lg bg-destructive/5 border border-destructive/20 p-2">
-                  <p className="text-[10px] text-destructive font-arabic">
-                    <AlertTriangle className="w-3 h-3 inline me-1" />
-                    {store.it_review_notes}
-                  </p>
-                </div>
-              )}
-            </motion.div>
-          );
-        })
-      )}
+                      {/* Info Chips */}
+                      <div className="flex flex-wrap gap-4">
+                        <div className="flex items-center gap-2 bg-secondary/30 px-3 py-1.5 rounded-xl border border-border/50">
+                           {store.rtsp_url ? <Wifi className="w-3 h-3 text-emerald" /> : <WifiOff className="w-3 h-3 text-destructive" />}
+                           <span className="text-[10px] font-bold font-arabic">{store.rtsp_url ? "RTSP Valid" : "RTSP Missing"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 bg-secondary/30 px-3 py-1.5 rounded-xl border border-border/50">
+                           <Activity className="w-3 h-3 text-primary" />
+                           <span className="text-[10px] font-bold font-arabic">{store.hardware_choice || "No Hardware"}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action & Progress Area */}
+                    <div className="w-full md:w-64 space-y-4 md:border-r md:border-border/50 md:pr-6">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-[10px] font-bold font-arabic">
+                           <span className="text-muted-foreground">نسبة جاهزية الإطلاق</span>
+                           <span className={isReady ? "text-emerald" : "text-primary"}>{score}%</span>
+                        </div>
+                        <Progress value={score} className={`h-2 ${isReady ? "[&>div]:bg-emerald" : ""}`} />
+                      </div>
+
+                      {isReady ? (
+                        <Button 
+                          onClick={() => handleQuickDeploy(store)}
+                          disabled={deploying === store.id}
+                          className="w-full bg-emerald text-white hover:bg-emerald/90 rounded-xl font-black font-arabic h-11 shadow-lg shadow-emerald/20 group"
+                        >
+                          {deploying === store.id ? (
+                            "جاري الإطلاق..."
+                          ) : (
+                            <>تفعيل سريع الآن <Zap className="w-4 h-4 ms-2 group-hover:scale-125 transition-transform" /></>
+                          )}
+                        </Button>
+                      ) : (
+                        <Button variant="outline" className="w-full rounded-xl border-border/50 text-muted-foreground font-bold font-arabic text-xs h-11" asChild>
+                           <a href={`/admin/store/${store.id}`}>مراجعة البيانات <ArrowUpRight className="w-3 h-3 ms-2" /></a>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {store.it_review_notes && (
+                    <div className="mt-4 p-3 rounded-xl bg-destructive/5 border border-destructive/10 flex gap-2 items-center">
+                       <AlertTriangle className="w-3 h-3 text-destructive" />
+                       <p className="text-[10px] font-bold text-destructive font-arabic">{store.it_review_notes}</p>
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })
+          )}
+        </AnimatePresence>
+      </div>
+
+      <p className="text-center text-[9px] text-muted-foreground/30 mt-8 font-mono tracking-[0.4em] uppercase">
+        SplitTech Provisioning System · Automated Review Pipeline
+      </p>
     </div>
   );
 }

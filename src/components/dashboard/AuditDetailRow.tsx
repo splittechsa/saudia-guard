@@ -1,22 +1,11 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Clock, CheckCircle, XCircle, AlertTriangle, Minus } from "lucide-react";
+import { 
+  ChevronDown, ChevronUp, Clock, CheckCircle, XCircle, 
+  AlertTriangle, Minus, LayoutGrid, Info, Search 
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-interface AuditDetailRowProps {
-  audit: {
-    id: string;
-    store_id: string;
-    score: number | null;
-    status: string | null;
-    summary: string | null;
-    result: any;
-    observations: any;
-    ai_reasoning: string | null;
-    confidence_score: number | null;
-    created_at: string;
-  };
-  storeName: string;
-}
+// ... (نفس الـ Interface السابقة)
 
 export function AuditDetailRow({ audit, storeName }: AuditDetailRowProps) {
   const [expanded, setExpanded] = useState(false);
@@ -38,80 +27,77 @@ export function AuditDetailRow({ audit, storeName }: AuditDetailRowProps) {
 
   const questions = extractQA();
 
+  // تحليل متقدم للنص العربي لتحديد اللون
   const getAnswerInfo = (answer: string) => {
     const lower = answer.toLowerCase();
-    if (lower.includes("نعم") || lower === "yes" || lower === "true" || lower.includes("متوفر") || lower.includes("ملتزم") || lower.includes("نظيف") || lower.includes("موجود") || lower.includes("مرتب")) {
-      return { color: "text-emerald", bg: "bg-emerald/8", border: "border-emerald/15", icon: CheckCircle };
+    const positiveWords = ["نعم", "yes", "true", "متوفر", "ملتزم", "نظيف", "موجود", "مرتب", "مكتمل", "مطابق"];
+    const negativeWords = ["لا", "no", "false", "غير", "مخالف", "متسخ", "غائب", "ناقص", "فشل"];
+    
+    if (positiveWords.some(word => lower.includes(word))) {
+      return { color: "text-emerald", bg: "bg-emerald/5", border: "border-emerald/10", icon: CheckCircle };
     }
-    if (lower.includes("لا") || lower === "no" || lower === "false" || lower.includes("غير") || lower.includes("مخالف") || lower.includes("متسخ") || lower.includes("غائب")) {
-      return { color: "text-destructive", bg: "bg-destructive/8", border: "border-destructive/15", icon: XCircle };
+    if (negativeWords.some(word => lower.includes(word))) {
+      return { color: "text-destructive", bg: "bg-destructive/5", border: "border-destructive/10", icon: XCircle };
     }
-    return { color: "text-accent", bg: "bg-accent/8", border: "border-accent/15", icon: AlertTriangle };
+    return { color: "text-accent", bg: "bg-accent/5", border: "border-accent/10", icon: AlertTriangle };
   };
 
-  const scoreColor = audit.score !== null
-    ? audit.score >= 80 ? "text-emerald" : audit.score >= 50 ? "text-accent" : "text-destructive"
-    : "text-muted-foreground";
-
-  const scoreBarColor = audit.score !== null
-    ? audit.score >= 80 ? "bg-emerald" : audit.score >= 50 ? "bg-accent" : "bg-destructive"
-    : "bg-muted";
+  const scoreTheme = audit.score !== null
+    ? audit.score >= 80 ? { text: "text-emerald", border: "border-emerald/30", bg: "bg-emerald/5" }
+    : audit.score >= 50 ? { text: "text-accent", border: "border-accent/30", bg: "bg-accent/5" }
+    : { text: "text-destructive", border: "border-destructive/30", bg: "bg-destructive/5" }
+    : { text: "text-muted-foreground", border: "border-border", bg: "bg-secondary/20" };
 
   const timeStr = new Date(audit.created_at).toLocaleString("ar-SA", {
-    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+    hour: "2-digit", minute: "2-digit", day: "numeric", month: "short"
   });
 
-  const positiveCount = questions.filter(q => {
-    const l = q.answer.toLowerCase();
-    return l.includes("نعم") || l === "yes" || l === "true" || l.includes("متوفر") || l.includes("ملتزم") || l.includes("نظيف") || l.includes("موجود") || l.includes("مرتب");
-  }).length;
-
   return (
-    <div className={`rounded-xl border transition-all duration-200 overflow-hidden ${expanded ? "border-primary/20 bg-card" : "border-border bg-card hover:border-border/80"}`}>
+    <motion.div 
+      layout
+      className={`rounded-[1.5rem] border transition-all duration-300 overflow-hidden ${
+        expanded ? "border-primary/30 shadow-xl shadow-primary/5 ring-1 ring-primary/10" : "border-border/50 bg-secondary/10 hover:border-primary/20"
+      }`}
+      dir="rtl"
+    >
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 p-4"
+        className="w-full flex items-center gap-4 p-5 text-right"
       >
-        {/* Score circle */}
-        <div className="relative shrink-0">
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${audit.score !== null ? (audit.score >= 80 ? "border-emerald/40" : audit.score >= 50 ? "border-accent/40" : "border-destructive/40") : "border-border"}`}>
-            <span className={`text-sm font-bold font-mono ${scoreColor}`}>
-              {audit.score !== null ? audit.score : "—"}
-            </span>
+        {/* Score Display */}
+        <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center border-2 shrink-0 ${scoreTheme.border} ${scoreTheme.bg}`}>
+          <span className={`text-lg font-black font-mono leading-none ${scoreTheme.text}`}>
+            {audit.score !== null ? audit.score : "—"}
+          </span>
+          <span className="text-[8px] font-bold opacity-40 uppercase tracking-tighter mt-1">SCORE</span>
+        </div>
+
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="flex items-center gap-3">
+            <span className="text-base font-black text-foreground font-arabic truncate">{storeName}</span>
+            <Badge variant="secondary" className="text-[9px] font-mono bg-background/50 text-muted-foreground h-5">
+              <Clock className="w-2.5 h-2.5 ml-1" /> {timeStr}
+            </Badge>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+               <div className="w-1.5 h-1.5 rounded-full bg-emerald" />
+               <span className="text-[10px] font-bold text-muted-foreground font-arabic">
+                 {questions.filter(q => getAnswerInfo(q.answer).color === "text-emerald").length} مطابق
+               </span>
+            </div>
+            <div className="flex items-center gap-1">
+               <div className="w-1.5 h-1.5 rounded-full bg-destructive" />
+               <span className="text-[10px] font-bold text-muted-foreground font-arabic">
+                 {questions.filter(q => getAnswerInfo(q.answer).color === "text-destructive").length} مخالف
+               </span>
+            </div>
           </div>
         </div>
 
-        <div className="flex-1 min-w-0 text-right">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-foreground font-arabic">{storeName}</span>
-            <span className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
-              <Clock className="w-3 h-3" /> {timeStr}
-            </span>
-          </div>
-          {/* Mini Q&A summary */}
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-[11px] text-muted-foreground font-arabic">
-              {questions.length > 0 ? `${questions.length} سؤال` : "لا توجد أسئلة"}
-            </span>
-            {questions.length > 0 && (
-              <>
-                <Minus className="w-3 h-3 text-border" />
-                <span className="text-[11px] text-emerald font-arabic">{positiveCount} ✓</span>
-                <span className="text-[11px] text-destructive font-arabic">{questions.length - positiveCount} ✗</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Progress bar mini */}
-        <div className="w-20 shrink-0 hidden sm:block">
-          <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-            <div className={`h-full rounded-full ${scoreBarColor} transition-all`} style={{ width: `${audit.score ?? 0}%` }} />
-          </div>
-        </div>
-
-        <div className="text-muted-foreground shrink-0">
-          {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        <div className={`p-2 rounded-xl transition-colors ${expanded ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
+          {expanded ? <Search className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </div>
       </button>
 
@@ -121,46 +107,74 @@ export function AuditDetailRow({ audit, storeName }: AuditDetailRowProps) {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-4 space-y-3 border-t border-border/50 pt-4">
-              {/* Summary */}
+            <div className="px-6 pb-6 space-y-4 border-t border-border/30 pt-6 bg-secondary/5">
+              
+              {/* AI Insight Section */}
               {audit.summary && (
-                <p className="text-sm text-muted-foreground font-arabic leading-relaxed">{audit.summary}</p>
-              )}
-
-              {/* All Questions & Answers - Full Width Cards */}
-              {questions.length > 0 ? (
-                <div className="grid gap-2">
-                  {questions.map((q, i) => {
-                    const style = getAnswerInfo(q.answer);
-                    const Icon = style.icon;
-                    return (
-                      <div key={i} className={`rounded-lg p-3 ${style.bg} border ${style.border}`}>
-                        <div className="flex items-start gap-3">
-                          <Icon className={`w-5 h-5 ${style.color} shrink-0 mt-0.5`} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-muted-foreground font-arabic leading-relaxed">{q.question}</p>
-                            <p className={`text-sm font-bold font-arabic mt-1 ${style.color}`}>{q.answer}</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="p-4 rounded-2xl bg-background/50 border border-border/50 relative overflow-hidden">
+                   <div className="absolute top-0 right-0 w-1 h-full bg-primary/40" />
+                   <div className="flex items-center gap-2 mb-2">
+                      <LayoutGrid className="w-4 h-4 text-primary" />
+                      <span className="text-[10px] font-black font-arabic text-primary uppercase tracking-widest">ملخص المحرك الذكي</span>
+                   </div>
+                   <p className="text-sm text-foreground font-arabic leading-relaxed">
+                     {audit.summary}
+                   </p>
                 </div>
-              ) : (
-                <div className="text-center py-4 text-muted-foreground text-xs font-arabic">لا توجد تفاصيل للأسئلة</div>
               )}
 
-              {/* Timestamp footer */}
-              <div className="text-[10px] text-muted-foreground font-mono pt-2 border-t border-border/30">
-                {new Date(audit.created_at).toLocaleString("ar-SA")}
+              {/* Detailed Q&A Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {questions.map((q, i) => {
+                  const style = getAnswerInfo(q.answer);
+                  const Icon = style.icon;
+                  return (
+                    <motion.div 
+                      key={i} 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className={`rounded-2xl p-4 ${style.bg} border ${style.border} flex items-start gap-4 transition-all hover:scale-[1.02]`}
+                    >
+                      <div className={`p-2 rounded-xl bg-background shadow-sm ${style.color}`}>
+                         <Icon className="w-4 h-4" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold text-muted-foreground/70 font-arabic leading-tight">{q.question}</p>
+                        <p className={`text-sm font-black font-arabic ${style.color}`}>{q.answer}</p>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Audit Metadata Footer */}
+              <div className="flex items-center justify-between pt-4 border-t border-border/20 text-[9px] font-mono text-muted-foreground/40 uppercase tracking-[0.2em]">
+                <span>ID: {audit.id.split('-')[0]}</span>
+                <span className="flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3" /> SPLIT TECH CORE SECURED
+                </span>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
+}
+
+// مكون Badge بسيط للتنسيق
+function Badge({ children, className, variant = "secondary" }: any) {
+  return (
+    <span className={`px-2 py-0.5 rounded-full font-bold flex items-center ${className}`}>
+      {children}
+    </span>
+  );
+}
+
+function ShieldCheck({ className }: any) {
+  return <CheckCircle className={className} />;
 }

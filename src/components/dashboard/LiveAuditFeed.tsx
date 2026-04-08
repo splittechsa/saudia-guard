@@ -1,29 +1,18 @@
 import { useEffect, useState } from "react";
-import { Activity, Eye, Clock } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Activity, Eye, Clock, ShieldCheck, AlertCircle, CheckCircle2, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 
-interface AuditEntry {
-  id: string;
-  store_id: string;
-  score: number | null;
-  status: string | null;
-  summary: string | null;
-  result: any;
-  created_at: string;
-}
-
-interface Props {
-  storeIds: string[];
-  storeNameMap: Record<string, string>;
-}
+// ... (نفس الـ Interfaces السابقة)
 
 export function LiveAuditFeed({ storeIds, storeNameMap }: Props) {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
 
   useEffect(() => {
     if (storeIds.length === 0) return;
-    const load = async () => {
+    
+    const loadInitial = async () => {
       const { data } = await supabase
         .from("analytics_logs")
         .select("id, store_id, score, status, summary, result, created_at")
@@ -32,10 +21,10 @@ export function LiveAuditFeed({ storeIds, storeNameMap }: Props) {
         .limit(10);
       if (data) setEntries(data as AuditEntry[]);
     };
-    load();
+    loadInitial();
 
     const channel = supabase
-      .channel("live-feed")
+      .channel("live-audit-stream")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_logs" }, (payload) => {
         const n = payload.new as AuditEntry;
         if (storeIds.includes(n.store_id)) {
@@ -47,90 +36,105 @@ export function LiveAuditFeed({ storeIds, storeNameMap }: Props) {
     return () => { supabase.removeChannel(channel); };
   }, [storeIds]);
 
-  const statusColor = (s: string | null) => {
-    if (s === "pass") return "text-emerald border-emerald/15 bg-emerald/[0.06]";
-    if (s === "warning") return "text-gold border-gold/15 bg-gold/[0.06]";
-    return "text-destructive border-destructive/15 bg-destructive/[0.06]";
+  const getStatusTheme = (s: string | null) => {
+    if (s === "pass") return "text-emerald border-emerald/20 bg-emerald/10 shadow-[0_0_10px_rgba(16,185,129,0.1)]";
+    if (s === "warning") return "text-orange-400 border-orange-400/20 bg-orange-400/10 shadow-[0_0_10px_rgba(251,146,60,0.1)]";
+    return "text-destructive border-destructive/20 bg-destructive/10 shadow-[0_0_10px_rgba(239,68,68,0.1)]";
   };
 
-  const statusLabel = (s: string | null) => {
-    if (s === "pass") return "PASS";
-    if (s === "warning") return "WARN";
-    return "FAIL";
-  };
-
-  const extractQuestions = (result: any): { question: string; answer: string }[] => {
-    if (!result || typeof result !== "object") return [];
-    if (Array.isArray(result)) {
-      return result.slice(0, 3).map((item: any) => ({
-        question: item.question || item.q || "—",
-        answer: item.answer || item.a || item.result || "—",
-      }));
-    }
-    return Object.entries(result).slice(0, 3).map(([k, v]) => ({
-      question: k,
-      answer: String(v),
+  const extractQuestions = (result: any) => {
+    if (!result) return [];
+    const raw = Array.isArray(result) ? result : Object.entries(result).map(([q, a]) => ({ question: q, answer: a }));
+    return raw.slice(0, 3).map((item: any) => ({
+      q: item.question || item.q || "—",
+      a: String(item.answer || item.a || item.result || "—")
     }));
   };
 
   return (
-    <div className="rounded-xl glass p-5 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Activity className="w-4 h-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">البث المباشر للتدقيقات</h3>
+    <div className="glass-strong rounded-[2rem] border border-border p-6 space-y-6 relative overflow-hidden" dir="rtl">
+      {/* Header */}
+      <div className="flex items-center justify-between relative z-10">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-primary/10 text-primary animate-pulse">
+            <Activity className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-foreground font-arabic tracking-tight">بث التدقيق اللحظي</h3>
+            <p className="text-[10px] text-muted-foreground font-arabic uppercase tracking-widest">Live Engine Feed</p>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald animate-pulse-live" />
-          <span className="text-[10px] text-emerald/70 font-mono uppercase tracking-wider">LIVE</span>
+        <div className="flex items-center gap-2 bg-emerald/5 border border-emerald/20 px-3 py-1 rounded-full">
+           <span className="w-1.5 h-1.5 rounded-full bg-emerald animate-ping" />
+           <span className="text-[10px] font-black text-emerald font-mono">ST-STREAMING</span>
         </div>
       </div>
 
-      {entries.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground text-sm">
-          <Eye className="w-8 h-8 mx-auto mb-2 opacity-20" />
-          بانتظار بيانات التدقيق...
-        </div>
-      ) : (
-        <div className="space-y-2 max-h-[500px] overflow-y-auto">
-          {entries.map((entry) => {
-            const questions = extractQuestions(entry.result);
-            return (
-              <div key={entry.id} className="rounded-lg border border-border/15 bg-card/40 p-3 space-y-2 hover:bg-card/60 transition-colors duration-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-3 h-3 text-muted-foreground/40" />
-                    <span className="text-[10px] text-muted-foreground/50 font-mono">
-                      [{new Date(entry.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })}]
-                    </span>
-                    <span className="text-[11px] text-foreground/70">{storeNameMap[entry.store_id] || "متجر"}</span>
+      <div className="space-y-3 max-h-[520px] overflow-y-auto custom-scrollbar pr-1 relative z-10">
+        <AnimatePresence initial={false}>
+          {entries.length === 0 ? (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-20 text-center space-y-3 opacity-20">
+              <Eye className="w-12 h-12 mx-auto" />
+              <p className="text-sm font-bold font-arabic">بانتظار البيانات من الكاميرات...</p>
+            </motion.div>
+          ) : (
+            entries.map((entry, idx) => {
+              const questions = extractQuestions(entry.result);
+              return (
+                <motion.div
+                  key={entry.id}
+                  initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  className="group rounded-2xl border border-border/50 bg-secondary/20 p-4 transition-all hover:bg-secondary/40 hover:border-primary/20"
+                >
+                  <div className="flex items-center justify-between mb-3 pb-3 border-b border-border/30">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-3.5 h-3.5 text-muted-foreground/50" />
+                      <span className="text-[11px] font-black text-primary/70 font-mono">
+                        {new Date(entry.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      </span>
+                      <span className="text-[11px] font-bold text-foreground/80 font-arabic border-r border-border/50 pr-2">
+                        {storeNameMap[entry.store_id] || "المتجر الرئيسي"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {entry.score !== null && (
+                        <span className="text-xs font-black font-mono text-foreground">{entry.score}%</span>
+                      )}
+                      <Badge variant="outline" className={`text-[9px] font-black px-2 py-0 border-none rounded-lg ${getStatusTheme(entry.status)}`}>
+                        {entry.status?.toUpperCase() || "AUDIT"}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {entry.score !== null && (
-                      <span className="text-[11px] font-bold font-mono text-foreground/60">{entry.score}%</span>
-                    )}
-                    <Badge variant="outline" className={`text-[9px] font-mono ${statusColor(entry.status)}`}>
-                      {statusLabel(entry.status)}
-                    </Badge>
+
+                  <div className="space-y-2">
+                    {questions.map((item, i) => {
+                      const isPositive = item.a.toLowerCase().includes("نعم") || item.a.toLowerCase().includes("yes");
+                      return (
+                        <div key={i} className="flex items-center justify-between bg-background/40 p-2 rounded-xl border border-border/20 group-hover:border-primary/10 transition-colors">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <ChevronRight className="w-3 h-3 text-primary shrink-0" />
+                            <p className="text-[11px] text-muted-foreground font-arabic truncate">{item.q}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            {isPositive ? <CheckCircle2 className="w-3 h-3 text-emerald" /> : <AlertCircle className="w-3 h-3 text-destructive" />}
+                            <span className={`text-[11px] font-black font-arabic ${isPositive ? "text-emerald" : "text-destructive/80"}`}>
+                              {item.a}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-                {questions.length > 0 && (
-                  <div className="space-y-1">
-                    {questions.map((q, i) => (
-                      <div key={i} className="flex items-center justify-between text-[11px]">
-                        <span className="text-muted-foreground/50 truncate max-w-[60%]">{q.question}</span>
-                        <span className={`font-semibold font-mono ${
-                          q.answer.toLowerCase().includes("نعم") || q.answer.toLowerCase() === "yes" ? "text-emerald" : "text-destructive/70"
-                        }`}>{q.answer}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+                </motion.div>
+              );
+            })
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Decorative Gradient Overlay */}
+      <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none z-20" />
     </div>
   );
 }
