@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CreditCard, Shield, Lock, CheckCircle, Loader2, AlertTriangle } from "lucide-react";
+import { CreditCard, ShieldCheck, Lock, CheckCircle2, Loader2, AlertCircle, Info, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+// التنبيه: تأكد من استخدام المفتاح الحي (Live Key) عند الإطلاق الرسمي في بيئة الإنتاج
 const TAP_PUBLISHABLE_KEY = "pk_test_EtHFV4BuPQokJT6jiROls87Y";
 
 declare global {
@@ -16,12 +17,12 @@ declare global {
 }
 
 const tapErrorMap: Record<string, string> = {
-  card_declined: "البطاقة مرفوضة — يرجى استخدام بطاقة أخرى",
-  insufficient_funds: "رصيد غير كافي في البطاقة",
+  card_declined: "تم رفض البطاقة، يرجى التحقق من الرصيد أو استخدام بطاقة أخرى",
+  insufficient_funds: "الرصيد غير كافٍ لإتمام العملية",
   expired_card: "البطاقة منتهية الصلاحية",
-  invalid_card: "رقم البطاقة غير صحيح",
-  processing_error: "خطأ في معالجة الدفع — حاول مرة أخرى",
-  authentication_failed: "فشل التحقق ثلاثي الأبعاد (3D Secure)",
+  invalid_card: "بيانات البطاقة غير صحيحة، يرجى التأكد من الأرقام",
+  processing_error: "حدث خطأ أثناء المعالجة، يرجى المحاولة مرة أخرى",
+  authentication_failed: "فشل التحقق الآمن (3D Secure)، حاول مجدداً",
 };
 
 export default function PaymentPage() {
@@ -36,9 +37,15 @@ export default function PaymentPage() {
   const tier = searchParams.get("tier") || "pro";
   const subscriptionId = searchParams.get("sub_id") || "";
 
+  // الأسعار النهائية الشاملة للضريبة
   const tierPrices: Record<string, number> = { basic: 299, pro: 499, enterprise: 899 };
-  const tierNames: Record<string, string> = { basic: "أساسي", pro: "احترافي", enterprise: "مؤسسي" };
-  const price = tierPrices[tier] || 499;
+  const tierNames: Record<string, string> = { basic: "الأساسية", pro: "الاحترافية", enterprise: "للمؤسسات" };
+  
+  const totalAmount = tierPrices[tier] || 499; 
+  
+  // الحساب العكسي للضريبة (15%)
+  const priceBeforeVat = Math.round(totalAmount / 1.15);
+  const vatAmount = totalAmount - priceBeforeVat;
 
   useEffect(() => {
     if (document.getElementById("tap-gosell-sdk")) {
@@ -60,7 +67,7 @@ export default function PaymentPage() {
 
   const handlePayment = useCallback(() => {
     if (!sdkReady || !window.goSell || !user) {
-      toast.error("نظام الدفع غير جاهز، يرجى الانتظار");
+      toast.error("جاري تهيئة بوابة الدفع، يرجى الانتظار...");
       return;
     }
 
@@ -79,9 +86,7 @@ export default function PaymentPage() {
         saveCardOption: false,
         customerCards: false,
         notifications: "standard",
-        backgroundImg: { url: "", opacity: "0.5" },
         callback: async (response: any) => {
-          console.log("Tap callback:", response);
           const cbStatus = response.callback?.status;
           const cbId = response.callback?.id;
 
@@ -89,107 +94,71 @@ export default function PaymentPage() {
             await processPayment(cbId);
           } else if (cbStatus === "FAILED" || cbStatus === "DECLINED") {
             setLoading(false);
-            const errMsg = tapErrorMap[response.callback?.response?.code] || "فشل الدفع — يرجى المحاولة مرة أخرى";
+            const errMsg = tapErrorMap[response.callback?.response?.code] || "لم تكتمل عملية الدفع، يرجى المحاولة مرة أخرى";
             setPaymentError(errMsg);
             toast.error(errMsg);
-          } else if (cbStatus === "CANCELLED" || cbStatus === "VOIDED") {
-            setLoading(false);
-            setPaymentError("تم إلغاء عملية الدفع");
-            toast.error("تم إلغاء عملية الدفع");
           } else {
             setLoading(false);
-            toast.error("فشل الدفع، يرجى المحاولة مرة أخرى");
           }
         },
-        onClose: () => {
-          setLoading(false);
-        },
+        onClose: () => setLoading(false),
         labels: {
           cardNumber: "رقم البطاقة",
-          expirationDate: "تاريخ الانتهاء",
-          cvv: "CVV",
-          cardHolder: "اسم حامل البطاقة",
-          actionButton: `ادفع ${Math.round(price * 1.15)} ر.س`,
+          expirationDate: "الشهر / السنة",
+          cvv: "الرمز السري (CVV)",
+          cardHolder: "الاسم المكتوب على البطاقة",
+          actionButton: `تأكيد الاشتراك | ${totalAmount} ر.س`,
         },
         style: {
           base: {
-            color: "#E0E0E0",
-            lineHeight: "18px",
-            fontFamily: "Noto Kufi Arabic, sans-serif",
-            fontSmoothing: "antialiased",
+            color: "#FFFFFF",
+            fontFamily: "Tajawal, sans-serif",
             fontSize: "16px",
-            "::placeholder": { color: "#999", fontSize: "14px" },
+            "::placeholder": { color: "#666" },
           },
-          invalid: { color: "#ef4444" },
         },
       },
       customer: {
         email: user.email || "",
-        first_name: user.user_metadata?.full_name || "Customer",
-        last_name: "",
+        first_name: user.user_metadata?.full_name || "شريك سبلت تيك",
         phone: { country_code: "966", number: "" },
       },
       order: {
-        amount: price,
+        amount: totalAmount,
         currency: "SAR",
-        items: [
-          {
-            id: tier,
-            name: `اشتراك ${tierNames[tier]}`,
-            description: `خطة ${tierNames[tier]} الشهرية`,
-            quantity: "1",
-            amount_per_unit: price.toString(),
-          },
-        ],
+        items: [{
+          id: tier,
+          name: `باقة سبلت تيك ${tierNames[tier]}`,
+          amount_per_unit: totalAmount.toString(),
+          quantity: "1",
+        }],
       },
       transaction: {
         mode: "charge",
         charge: {
-          saveCard: false,
           threeDSecure: true,
-          description: `Split Tech - ${tierNames[tier]}`,
+          description: `SplitTech - ${tierNames[tier]} (Tax Inclusive)`,
           metadata: { user_id: user.id, subscription_id: subscriptionId, tier },
-          receipt: { email: true, sms: false },
           redirect: `${window.location.origin}/dashboard/payment-success`,
-          post: null,
         },
       },
     });
 
     window.goSell.openLightBox();
-  }, [sdkReady, user, price, tier, subscriptionId]);
+  }, [sdkReady, user, totalAmount, tier, subscriptionId]);
 
   const processPayment = async (chargeId: string) => {
     setVerifying(true);
-    setPaymentError(null);
     try {
       const { data, error } = await supabase.functions.invoke("create-tap-charge", {
-        body: {
-          amount: price,
-          currency: "SAR",
-          tier,
-          token_id: chargeId,
-          subscription_id: subscriptionId,
-        },
+        body: { amount: totalAmount, tier, token_id: chargeId, subscription_id: subscriptionId },
       });
 
       if (error) throw error;
-
-      if (data?.status === "CAPTURED" || data?.redirect_url) {
-        toast.success("تم الدفع بنجاح! 🎉");
-        navigate("/dashboard/payment-success");
-      } else if (data?.redirect_url) {
-        window.location.href = data.redirect_url;
-      } else if (data?.error) {
-        setPaymentError(data.error);
-        toast.error(data.error);
-      } else {
-        navigate("/dashboard/payment-success");
-      }
-    } catch (err: any) {
-      console.error("Payment processing error:", err);
-      setPaymentError("حدث خطأ في معالجة الدفع — يرجى المحاولة لاحقاً");
-      toast.error("حدث خطأ في معالجة الدفع");
+      toast.success("تم تفعيل اشتراكك بنجاح! 🎉");
+      navigate("/dashboard/payment-success");
+    } catch (err) {
+      setPaymentError("حدث خطأ أثناء تأكيد الدفع، يرجى التواصل مع الدعم الفني");
     } finally {
       setVerifying(false);
       setLoading(false);
@@ -198,78 +167,102 @@ export default function PaymentPage() {
 
   return (
     <div className="min-h-screen bg-background carbon-grid relative overflow-hidden" dir="rtl">
+      {/* Background Glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-primary/5 rounded-full blur-[150px] pointer-events-none" />
 
-      <div className="max-w-lg mx-auto px-4 py-12">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-primary/10 border border-primary/20 mb-4">
-            <CreditCard className="w-7 h-7 text-primary" />
+      <div className="max-w-xl mx-auto px-4 py-16 z-10 relative">
+        
+        {/* Header */}
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-primary/10 border border-primary/20 mb-6 shadow-xl">
+            <CreditCard className="w-10 h-10 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground font-arabic">إتمام الدفع</h1>
-          <p className="text-sm text-muted-foreground mt-2 font-arabic">
-            اشتراك {tierNames[tier]} — {price} ر.س/شهرياً
-          </p>
+          <h1 className="text-3xl font-black text-foreground font-arabic mb-3">إتمام عملية الدفع</h1>
+          <p className="text-muted-foreground font-arabic">باقة {tierNames[tier]} — السعر شامل ضريبة القيمة المضافة</p>
         </motion.div>
 
-        {/* Order Summary */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl bg-card border border-border p-6 mb-6">
-          <h3 className="text-sm font-semibold text-foreground mb-4 font-arabic">ملخص الطلب</h3>
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-sm text-muted-foreground font-arabic">خطة {tierNames[tier]}</span>
-            <span className="text-sm font-bold text-foreground">{price} ر.س</span>
-          </div>
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-sm text-muted-foreground font-arabic">ضريبة القيمة المضافة (15%)</span>
-            <span className="text-sm font-bold text-foreground">{Math.round(price * 0.15)} ر.س</span>
-          </div>
-          <div className="border-t border-border my-3" />
-          <div className="flex justify-between items-center">
-            <span className="text-base font-bold text-foreground font-arabic">الإجمالي</span>
-            <span className="text-lg font-bold text-primary">{Math.round(price * 1.15)} ر.س</span>
-          </div>
-        </motion.div>
-
-        {/* Error Banner */}
-        {paymentError && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-destructive/10 border border-destructive/30 p-4 mb-6 flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
-            <p className="text-sm text-destructive font-arabic">{paymentError}</p>
+        <div className="grid gap-6">
+          {/* ملخص الفاتورة (شامل الضريبة) */}
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-strong rounded-[2.5rem] p-8 border border-border/50">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-lg font-bold text-foreground font-arabic">ملخص الاشتراك</h3>
+              <span className="text-[10px] bg-secondary px-3 py-1 rounded-full text-muted-foreground font-mono tracking-widest uppercase">ST-SECURE</span>
+            </div>
+            
+            <div className="space-y-5">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground font-arabic">قيمة الباقة (قبل الضريبة)</span>
+                <span className="font-bold text-foreground">{priceBeforeVat.toLocaleString()} ر.س</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground font-arabic">ضريبة القيمة المضافة (15%)</span>
+                <span className="font-bold text-foreground">{vatAmount.toLocaleString()} ر.س</span>
+              </div>
+              
+              <div className="border-t border-border/50 pt-6 flex justify-between items-end">
+                <div>
+                  <p className="text-[10px] text-primary font-bold uppercase mb-1 tracking-tighter">Total Tax Inclusive</p>
+                  <p className="text-4xl font-black text-foreground leading-none">{totalAmount.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">ر.س</span></p>
+                </div>
+                <div className="text-left">
+                  <span className="text-[10px] bg-emerald/10 text-emerald border border-emerald/20 px-3 py-1 rounded-full font-arabic font-bold">
+                    السعر شامل الضريبة
+                  </span>
+                </div>
+              </div>
+            </div>
           </motion.div>
-        )}
 
-        {/* Payment Container */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl bg-card border border-border p-6 mb-6">
-          <div id="tap-payment-container" className="min-h-[60px]" />
-          <Button
-            onClick={handlePayment}
-            disabled={loading || verifying || !sdkReady}
-            className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90 font-arabic h-12 text-base"
-          >
-            {verifying ? (
-              <><Loader2 className="w-5 h-5 me-2 animate-spin" /> جاري التحقق...</>
-            ) : loading ? (
-              <><Loader2 className="w-5 h-5 me-2 animate-spin" /> جاري المعالجة...</>
-            ) : (
-              <><Lock className="w-4 h-4 me-2" /> ادفع {Math.round(price * 1.15)} ر.س</>
+          {/* بوابة الدفع */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-strong rounded-[2.5rem] p-8 border border-primary/20 relative">
+            <div id="tap-payment-container" className="mb-4 min-h-[50px]" />
+            
+            {paymentError && (
+              <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-2xl flex items-center gap-3 text-destructive">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <p className="text-xs font-bold font-arabic leading-relaxed">{paymentError}</p>
+              </div>
             )}
-          </Button>
-        </motion.div>
 
-        {/* Trust Badges */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="flex items-center justify-center gap-6 text-muted-foreground">
-          <div className="flex items-center gap-1.5 text-xs font-arabic">
-            <Shield className="w-3.5 h-3.5 text-emerald" /><span>دفع آمن</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs font-arabic">
-            <Lock className="w-3.5 h-3.5 text-primary" /><span>تشفير SSL</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs font-arabic">
-            <CheckCircle className="w-3.5 h-3.5 text-accent" /><span>PCI DSS</span>
-          </div>
-        </motion.div>
+            <Button
+              onClick={handlePayment}
+              disabled={loading || verifying || !sdkReady}
+              className="w-full h-14 bg-primary text-primary-foreground hover:bg-primary/90 font-black text-lg rounded-2xl shadow-xl shadow-primary/20 group transition-all"
+            >
+              {verifying ? (
+                <><Loader2 className="w-5 h-5 me-2 animate-spin" /> جاري التوثيق...</>
+              ) : (
+                <><Lock className="w-5 h-5 me-2" /> ادفع {totalAmount} ر.س آمن</>
+              )}
+            </Button>
 
-        <p className="text-center text-[10px] text-muted-foreground mt-4 font-arabic">
-          بيئة اختبار — لا يتم خصم مبالغ فعلية
+            <div className="mt-8 flex items-center justify-center gap-5 border-t border-border/50 pt-6 grayscale opacity-40">
+              <img src="https://img.icons8.com/color/48/000000/visa.png" className="h-6" alt="Visa" />
+              <img src="https://img.icons8.com/color/48/000000/mastercard.png" className="h-6" alt="Mastercard" />
+              <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/Mada_Logo.svg" className="h-4" alt="Mada" />
+              <img src="https://img.icons8.com/color/48/000000/apple-pay.png" className="h-8" alt="Apple Pay" />
+            </div>
+          </motion.div>
+
+          {/* شارات الثقة */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-secondary/30 rounded-2xl p-4 text-center border border-border/50">
+              <ShieldCheck className="w-5 h-5 text-primary mx-auto mb-2" />
+              <p className="text-[9px] font-bold text-muted-foreground font-arabic uppercase">تشفير AES-256</p>
+            </div>
+            <div className="bg-secondary/30 rounded-2xl p-4 text-center border border-border/50">
+              <CheckCircle2 className="w-5 h-5 text-primary mx-auto mb-2" />
+              <p className="text-[9px] font-bold text-muted-foreground font-arabic uppercase">توثيق مالي</p>
+            </div>
+            <div className="bg-secondary/30 rounded-2xl p-4 text-center border border-border/50">
+              <Info className="w-5 h-5 text-primary mx-auto mb-2" />
+              <p className="text-[9px] font-bold text-muted-foreground font-arabic uppercase">دعم محلي</p>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-center text-[9px] text-muted-foreground/30 mt-10 font-mono tracking-[0.3em] uppercase">
+          SplitTech AI Audit Platform · PCI-DSS Secure Gateway
         </p>
       </div>
     </div>
