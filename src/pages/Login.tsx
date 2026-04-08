@@ -5,7 +5,7 @@ import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
-import { lovable } from "@/integrations/lovable/index";
+import { oauth } from "@/integrations/supabase-oauth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import splitLogo from "@/assets/split-logo-icon.png";
@@ -94,7 +94,7 @@ export default function Login() {
               variant="outline"
               className="w-full h-11 font-semibold"
               onClick={async () => {
-                const { error } = await lovable.auth.signInWithOAuth("apple", {
+                const { error } = await oauth.auth.signInWithOAuth("apple", {
                   redirect_uri: window.location.origin,
                 });
                 if (error) toast.error(error.message);

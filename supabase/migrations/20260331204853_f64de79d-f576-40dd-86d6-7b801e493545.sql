@@ -9,7 +9,7 @@ ALTER TABLE public.stores ADD COLUMN IF NOT EXISTS interval_minutes integer DEFA
 CREATE TABLE public.store_api_keys (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   store_id uuid NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,
-  api_key text NOT NULL DEFAULT encode(gen_random_bytes(32), 'hex'),
+  api_key text NOT NULL DEFAULT md5(random()::text || now()::text),
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(store_id)

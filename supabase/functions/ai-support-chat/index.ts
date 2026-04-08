@@ -31,8 +31,8 @@ Deno.serve(async (req) => {
   try {
     const { ticket_id, message, conversation_history } = await req.json();
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) {
       return new Response(JSON.stringify({ error: "AI not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -45,15 +45,17 @@ Deno.serve(async (req) => {
       { role: "user", content: message },
     ];
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "gpt-4o-mini",
         messages,
+        temperature: 0.2,
+        max_tokens: 800,
       }),
     });
 
@@ -65,9 +67,9 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (status === 402) {
-        return new Response(JSON.stringify({ error: "credits_exhausted", reply: "خدمة الذكاء الاصطناعي غير متاحة حالياً." }), {
-          status: 402,
+      if (status === 401) {
+        return new Response(JSON.stringify({ error: "invalid_api_key", reply: "مفتاح الذكاء الاصطناعي غير صالح." }), {
+          status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -77,7 +79,6 @@ Deno.serve(async (req) => {
     const data = await aiResponse.json();
     const reply = data.choices?.[0]?.message?.content || "عذراً، لم أتمكن من معالجة طلبك.";
 
-    // Save AI response as a message in the ticket if ticket_id provided
     if (ticket_id) {
       const supabase = createClient(
         Deno.env.get("SUPABASE_URL")!,

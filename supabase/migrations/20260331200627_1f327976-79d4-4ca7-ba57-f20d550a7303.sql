@@ -1,5 +1,5 @@
 -- Create avatars storage bucket
-INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true);
+INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true) ON CONFLICT (id) DO NOTHING;
 
 -- Allow authenticated users to upload their own avatar
 CREATE POLICY "Users can upload own avatar"

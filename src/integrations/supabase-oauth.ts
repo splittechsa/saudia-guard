@@ -1,5 +1,5 @@
-// OAuth integration using Supabase (replaces Lovable Cloud)
-// This was previously using @lovable.dev/cloud-auth-js which routed to Lovable Cloud
+// OAuth integration using Supabase
+// This service provides OAuth redirects through Supabase only.
 
 import { supabase } from "../supabase/client";
 
@@ -8,7 +8,7 @@ type SignInOptions = {
   extraParams?: Record<string, string>;
 };
 
-export const lovable = {
+export const oauth = {
   auth: {
     signInWithOAuth: async (provider: "google" | "apple" | "microsoft", opts?: SignInOptions) => {
       try {
