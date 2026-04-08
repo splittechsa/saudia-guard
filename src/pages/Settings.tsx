@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, ChangeEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   User, Lock, Store, CreditCard, Save, Upload, 
@@ -35,7 +35,92 @@ export default function Settings() {
   const [confirmAction, setConfirmAction] = useState<null | { type: string; id?: string; label: string }>(null);
   const [confirmText, setConfirmText] = useState("");
 
-  // ... (نفس الـ useEffect والـ Load functions السابقة)
+  const tabs = [
+    { id: "profile", label: "الملف الشخصي", icon: User },
+    { id: "store", label: "المتاجر", icon: Store },
+    { id: "billing", label: "الفوترة", icon: CreditCard },
+  ] as const;
+
+  const fetchProfileData = async () => {
+    if (!user) return;
+
+    const [{ data: storesData }, { data: subsData }] = await Promise.all([
+      supabase.from("stores").select("id, name, store_status, hardware_choice" ).eq("user_id", user.id),
+      supabase.from("subscriptions").select("id, tier, status, price_sar, hardware_choice").eq("user_id", user.id),
+    ]);
+
+    if (storesData) setStores(storesData);
+    if (subsData) setSubs(subsData);
+  };
+
+  useEffect(() => {
+    fetchProfileData();
+  }, [user]);
+
+  const handleUploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = URL.createObjectURL(file);
+      setAvatarUrl(url);
+      toast.success("تم رفع الصورة مؤقتاً. احفظ التغييرات لاحقاً.");
+    } catch (error) {
+      toast.error("فشل رفع الصورة، حاول مرة أخرى.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      await supabase.from("profiles").update({ full_name: fullName }).eq("id", user.id);
+      toast.success("تم تحديث الملف الشخصي.");
+    } catch (error) {
+      toast.error("فشل تحديث الملف الشخصي.");
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!newPassword || newPassword !== confirmPassword) {
+      toast.error("تأكد من تطابق كلمة المرور الجديدة.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      toast.success("تم تحديث كلمة المرور.");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error) {
+      toast.error("فشل تغيير كلمة المرور.");
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction) return;
+    setConfirmAction(null);
+    setConfirmText("");
+    toast.success(`تم تأكيد الإجراء: ${confirmAction.label}`);
+  };
+
+  const handleCancelSubscription = async (id?: string) => {
+    if (!id) return;
+    setConfirmAction({ type: "cancel_subscription", id, label: "إلغاء الاشتراك" });
+  };
+
+  const handleDeleteAccount = () => {
+    setConfirmAction({ type: "delete_account", label: "حذف الحساب نهائياً" });
+  };
 
   return (
     <DashboardLayout>

@@ -16,12 +16,99 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import TicketChat from "@/components/tickets/TicketChat";
 
-// ... (نفس الـ Interfaces والـ PriorityColors السابقة)
+const statusIcons: Record<string, typeof AlertCircle> = {
+  open: AlertCircle,
+  in_progress: Loader2,
+  resolved: CheckCircle,
+};
+
+const priorityColors: Record<string, string> = {
+  low: "bg-muted text-muted-foreground",
+  medium: "bg-primary text-primary",
+  high: "bg-destructive text-destructive",
+};
+
+const getPriorityLabel = (priority: string) => {
+  switch (priority) {
+    case "high":
+      return "عالية";
+    case "medium":
+      return "متوسطة";
+    default:
+      return "عادية";
+  }
+};
+
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case "resolved":
+      return "تم الحل";
+    case "in_progress":
+      return "قيد المتابعة";
+    default:
+      return "مفتوحة";
+  }
+};
 
 export default function Support() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  // ... (نفس الـ States السابقة)
+  const [showForm, setShowForm] = useState(false);
+  const [subject, setSubject] = useState("");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState("low");
+  const [submitting, setSubmitting] = useState(false);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
+
+  const fetchTickets = async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("support_tickets")
+      .select("id, subject, description, priority, status, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Failed to fetch support tickets:", error);
+      return;
+    }
+
+    setTickets(data || []);
+  };
+
+  useEffect(() => {
+    fetchTickets();
+  }, [user]);
+
+  const handleSubmit = async () => {
+    if (!subject.trim() || !description.trim() || !user) return;
+    setSubmitting(true);
+
+    const { data, error } = await supabase.from("support_tickets").insert([{ 
+      user_id: user.id,
+      subject: subject.trim(),
+      description: description.trim(),
+      priority,
+      status: "open",
+      created_at: new Date().toISOString(),
+    }]);
+
+    if (error) {
+      toast.error("حدث خطأ أثناء إرسال التذكرة. حاول مرة أخرى.");
+      console.error(error);
+    } else {
+      toast.success("تم إرسال التذكرة بنجاح.");
+      setSubject("");
+      setDescription("");
+      setPriority("low");
+      setShowForm(false);
+      fetchTickets();
+      if (data?.length) setSelectedTicket(data[0]);
+    }
+
+    setSubmitting(false);
+  };
 
   return (
     <DashboardLayout>

@@ -7,19 +7,73 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { StatCardSkeleton } from "@/components/ui/carbon-skeleton";
 
-// ... (نفس الـ Interfaces والـ Threshold السابقة)
+interface StoreHealth {
+  id: string;
+  name: string;
+  status: "online" | "offline" | "inactive";
+  hardware_choice: string | null;
+  minutesAgo: number | null;
+}
 
 export default function SystemStatus() {
   const [stores, setStores] = useState<StoreHealth[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
+  // حساب المتغيرات من stores
+  const online = stores.filter(store => store.status === "online").length;
+  const offline = stores.filter(store => store.status === "offline").length;
+  const inactive = stores.filter(store => store.status === "inactive").length;
+
   const fetchHealth = async () => {
     setLoading(true);
-    // ... (نفس منطق الـ Fetch والـ Loop من سوبابيس)
-    // ملاحظة: تأكد من جلب بيانات الـ Heartbeat إذا كنت فعلتها في كود البايثون
-    setLastRefreshed(new Date());
-    setLoading(false);
+    try {
+      // جلب المتاجر وآخر analytics_logs لكل متجر
+      const [storesRes, logsRes] = await Promise.all([
+        supabase.from("stores").select("id, name, hardware_choice, is_active"),
+        supabase.from("analytics_logs").select("store_id, created_at").order("created_at", { ascending: false })
+      ]);
+
+      const stores = storesRes.data || [];
+      const logs = logsRes.data || [];
+
+      // تجميع آخر log لكل store
+      const lastLogs: Record<string, string> = {};
+      logs.forEach(log => {
+        if (!lastLogs[log.store_id]) {
+          lastLogs[log.store_id] = log.created_at;
+        }
+      });
+
+      const now = Date.now();
+      const healthList: StoreHealth[] = stores.map(store => {
+        const lastLogAt = lastLogs[store.id];
+        const minutesAgo = lastLogAt ? (now - new Date(lastLogAt).getTime()) / 60000 : null;
+        
+        let status: "online" | "offline" | "inactive";
+        if (minutesAgo === null) {
+          status = "inactive"; // لم يرسل أي logs أبداً
+        } else if (minutesAgo > 15) {
+          status = "offline";
+        } else {
+          status = "online";
+        }
+
+        return {
+          id: store.id,
+          name: store.name,
+          status,
+          hardware_choice: store.hardware_choice,
+          minutesAgo: minutesAgo ? Math.floor(minutesAgo) : null
+        };
+      });
+
+      setStores(healthList);
+    } catch (error) {
+      console.error("Error fetching health data:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

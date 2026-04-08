@@ -11,10 +11,78 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
-// ... (نفس الـ Interfaces والـ Regex السابقة)
+interface StoreSetupRow {
+  id: string;
+  name: string;
+  store_status: string;
+  hardware_choice: string | null;
+  it_review_notes?: string | null;
+}
 
 export default function StoreSetup() {
-  // ... (نفس الـ States والـ Handlers السابقة)
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [stores, setStores] = useState<StoreSetupRow[]>([]);
+  const [selectedStore, setSelectedStore] = useState<StoreSetupRow | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const storeStatusLabel = (status: string) => {
+    switch (status) {
+      case "active":
+        return { label: "نشط", color: "text-emerald" };
+      case "draft":
+        return { label: "قيد المراجعة", color: "text-primary" };
+      case "rejected":
+        return { label: "مرفوض", color: "text-destructive" };
+      default:
+        return { label: "غير معروف", color: "text-muted-foreground" };
+    }
+  };
+
+  const fetchStores = async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("stores")
+      .select("id, name, hardware_choice, store_status, it_review_notes")
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.error("Failed to load stores for StoreSetup:", error);
+      return;
+    }
+
+    const storeRows = (data || []) as StoreSetupRow[];
+    setStores(storeRows);
+    if (!selectedStore && storeRows.length > 0) {
+      setSelectedStore(storeRows[0]);
+    }
+  };
+
+  useEffect(() => {
+    fetchStores();
+  }, [user]);
+
+  const selectStore = (store: StoreSetupRow) => {
+    setSelectedStore(store);
+  };
+
+  const handleSubmitForReview = async () => {
+    if (!selectedStore) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("stores")
+      .update({ store_status: "active" })
+      .eq("id", selectedStore.id);
+
+    if (error) {
+      toast.error("تعذر إرسال المتجر للمراجعة.");
+      console.error(error);
+    } else {
+      toast.success("تم تحديث حالة المتجر إلى نشط.");
+      fetchStores();
+    }
+    setSaving(false);
+  };
 
   return (
     <DashboardLayout>
