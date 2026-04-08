@@ -63,7 +63,7 @@ export default function LandingNav() {
             <button
               key={link.label}
               onClick={() => scrollTo(link.href)}
-              className="relative px-4 py-2 text-[13px] text-muted-foreground/70 hover:text-foreground transition-colors duration-300 rounded-lg hover:bg-foreground/[0.03] group"
+              className="relative px-4 py-2 text-[13px] text-muted-foreground hover:text-foreground transition-colors duration-300 rounded-lg hover:bg-foreground/[0.04] group"
             >
               {link.label}
               <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-0 h-px bg-primary group-hover:w-4 transition-all duration-300" />
@@ -76,7 +76,7 @@ export default function LandingNav() {
           <Button
             variant="ghost"
             onClick={() => navigate("/login")}
-            className="text-muted-foreground/60 hover:text-foreground text-[13px] h-9 px-4"
+            className="text-muted-foreground hover:text-foreground text-[13px] h-9 px-4"
           >
             تسجيل الدخول
           </Button>
