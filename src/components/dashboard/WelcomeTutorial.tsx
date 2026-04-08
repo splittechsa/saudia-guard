@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, BarChart3, Eye, Shield, TrendingUp, Zap, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -147,7 +147,7 @@ export function WelcomeTutorial({ onClose }: { onClose: () => void }) {
           <p className="text-center text-[8px] text-muted-foreground/30 mt-8 font-mono tracking-[0.3em] uppercase">
             SplitTech Intelligence · Quick Guide
           </p>
-        </div>
+        </motion.div>
       </motion.div>
     </AnimatePresence>
   );
