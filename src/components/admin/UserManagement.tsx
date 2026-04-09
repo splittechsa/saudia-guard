@@ -60,7 +60,8 @@ export default function UserManagement() {
       setUsers(usersData || []);
       setRoles(rolesMap);
     } catch (error) {
-      toast.error("فشل في تحميل بيانات المستخدمين");
+      const message = error instanceof Error ? error.message : "خطأ غير معروف";
+      toast.error(`فشل في تحميل بيانات المستخدمين: ${message}`);
     } finally {
       setLoading(false);
     }

@@ -115,6 +115,14 @@ export default function AdminDashboard() {
       supabase.from("analytics_logs").select("id, store_id, score, status, summary, created_at").order("created_at", { ascending: false }).limit(30),
       supabase.from("store_api_keys").select("store_id, api_key, is_active"),
     ]);
+
+    const firstError = storesRes.error || alertsRes.error || ticketsRes.error || subsRes.error || pendingSubsRes.error || auditsRes.error || apiKeysRes.error;
+    if (firstError) {
+      toast.error(`فشل تحميل لوحة الإدارة: ${firstError.message}`);
+      setLoading(false);
+      return;
+    }
+
     if (storesRes.data) setStores(storesRes.data as any[]);
     if (alertsRes.data) setAlerts(alertsRes.data as AlertRow[]);
     if (ticketsRes.data) setTickets(ticketsRes.data as TicketRow[]);
@@ -192,11 +200,31 @@ export default function AdminDashboard() {
 
   const handleSubscriptionApproval = async (subId: string, userId: string, approved: boolean) => {
     if (approved) {
-      await supabase.from("subscriptions").update({ status: "active" }).eq("id", subId);
-      await supabase.from("stores").update({ is_active: true }).eq("user_id", userId);
+      const { error: subError } = await supabase.from("subscriptions").update({ status: "active" }).eq("id", subId);
+      if (subError) {
+        toast.error(`فشل تفعيل الاشتراك: ${subError.message}`);
+        return;
+      }
+
+      const { error: storeError } = await supabase.from("stores").update({ is_active: true, store_status: "active" }).eq("user_id", userId);
+      if (storeError) {
+        toast.error(`فشل تفعيل المتاجر: ${storeError.message}`);
+        return;
+      }
       toast.success("✅ تم تفعيل الاشتراك والمتاجر");
     } else {
-      await supabase.from("subscriptions").update({ status: "rejected" }).eq("id", subId);
+      const { error: subError } = await supabase.from("subscriptions").update({ status: "inactive" }).eq("id", subId);
+      if (subError) {
+        toast.error(`فشل رفض الاشتراك: ${subError.message}`);
+        return;
+      }
+
+      const { error: storeError } = await supabase.from("stores").update({ is_active: false, store_status: "suspended" }).eq("user_id", userId);
+      if (storeError) {
+        toast.error(`فشل تعليق المتاجر: ${storeError.message}`);
+        return;
+      }
+
       toast.success("تم رفض طلب الاشتراك");
     }
     fetchAll();

@@ -54,12 +54,12 @@ export default function Onboarding() {
     setSaving(true);
 
     // Create subscription with pending status (needs admin approval)
-    const { error: subError } = await supabase.from("subscriptions").insert({
+    const { data: createdSub, error: subError } = await supabase.from("subscriptions").insert({
       user_id: user.id,
       tier: tierKeys[selectedTier],
       price_sar: tiers[selectedTier].price,
       status: "pending",
-    });
+    }).select("id").single();
 
     if (subError) {
       toast.error("فشل في إنشاء الاشتراك: " + subError.message);
@@ -73,10 +73,14 @@ export default function Onboarding() {
       name: storeName.trim(),
       custom_queries: questions,
       query_status: "pending",
+      store_status: "draft",
       is_active: false,
     });
 
     if (storeError) {
+      if (createdSub?.id) {
+        await supabase.from("subscriptions").delete().eq("id", createdSub.id);
+      }
       toast.error("فشل في إنشاء المتجر: " + storeError.message);
       setSaving(false);
       return;

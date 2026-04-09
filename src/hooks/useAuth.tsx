@@ -43,10 +43,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [profile, setProfile] = useState<{ full_name: string; email: string } | null>(null);
 
-  const fetchUserData = useCallback(async (userId: string) => {
+  const fetchUserData = useCallback(async (authUser: User) => {
+    const userId = authUser.id;
     const [rolesRes, profileRes] = await Promise.all([
       supabase.from("user_roles").select("role").eq("user_id", userId),
-      supabase.from("profiles").select("full_name, email").eq("id", userId).single(),
+      supabase.from("profiles").select("full_name, email").eq("id", userId).maybeSingle(),
     ]);
 
     if (rolesRes.error) {
@@ -61,9 +62,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (profileRes.data) {
       setProfile(profileRes.data as { full_name: string; email: string });
-    } else {
-      setProfile(null);
+      return;
     }
+
+    // Self-heal missing profile rows when trigger wasn't applied in the DB.
+    const fallbackProfile = {
+      id: userId,
+      email: authUser.email ?? null,
+      full_name: (authUser.user_metadata?.full_name as string | undefined) ?? null,
+    };
+
+    const { data: insertedProfile } = await supabase
+      .from("profiles")
+      .upsert(fallbackProfile, { onConflict: "id" })
+      .select("full_name, email")
+      .maybeSingle();
+
+    setProfile((insertedProfile as { full_name: string; email: string }) ?? null);
   }, []);
 
   const getDefaultRoute = useCallback(() => {
@@ -79,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(nextSession?.user ?? null);
 
       if (nextSession?.user) {
-        await fetchUserData(nextSession.user.id);
+        await fetchUserData(nextSession.user);
       } else {
         setRoles([]);
         setProfile(null);

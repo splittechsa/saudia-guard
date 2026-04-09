@@ -116,6 +116,13 @@ export default function ITDashboard() {
       supabase.from("profiles").select("id, full_name, email"),
     ]);
 
+    const firstError = storesRes.error || logsRes.error || ticketsRes.error || debugRes.error || profilesRes.error;
+    if (firstError) {
+      toast.error(`فشل تحميل بيانات لوحة IT: ${firstError.message}`);
+      setLoading(false);
+      return;
+    }
+
     const stores = storesRes.data || [];
     const logs = logsRes.data || [];
     const profiles = profilesRes.data || [];
