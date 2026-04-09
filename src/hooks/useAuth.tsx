@@ -10,6 +10,17 @@ const isAppRole = (value: string): value is AppRole => {
   return VALID_ROLES.includes(value as AppRole);
 };
 
+const resolveRolesWithRpc = async (userId: string): Promise<AppRole[]> => {
+  const checks = await Promise.all(
+    VALID_ROLES.map(async (role) => {
+      const { data } = await supabase.rpc("has_role", { _user_id: userId, _role: role });
+      return data ? role : null;
+    })
+  );
+
+  return checks.filter((role): role is AppRole => role !== null);
+};
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -39,7 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ]);
 
     if (rolesRes.error) {
-      setRoles([]);
+      const rolesFromRpc = await resolveRolesWithRpc(userId);
+      setRoles(rolesFromRpc);
     } else {
       const normalizedRoles = (rolesRes.data || [])
         .map((r: { role: string }) => r.role)
