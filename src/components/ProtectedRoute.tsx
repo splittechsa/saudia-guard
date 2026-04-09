@@ -1,8 +1,8 @@
 import { Navigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { AppRole, useAuth } from "@/hooks/useAuth";
 
-export default function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) {
-  const { user, loading, hasRole } = useAuth();
+export default function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode; requiredRole?: AppRole }) {
+  const { user, loading, hasRole, getDefaultRoute } = useAuth();
 
   if (loading) {
     return (
@@ -14,11 +14,8 @@ export default function ProtectedRoute({ children, requiredRole }: { children: R
 
   if (!user) return <Navigate to="/login" replace />;
 
-  if (requiredRole && !hasRole(requiredRole as any)) {
-    // Redirect to appropriate dashboard based on role
-    if (hasRole("super_owner")) return <Navigate to="/admin" replace />;
-    if (hasRole("it_support")) return <Navigate to="/it-dashboard" replace />;
-    return <Navigate to="/dashboard" replace />;
+  if (requiredRole && !hasRole(requiredRole)) {
+    return <Navigate to={getDefaultRoute()} replace />;
   }
 
   return <>{children}</>;

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 interface UserRow {
   id: string;
@@ -34,6 +35,7 @@ export default function UserManagement() {
   const [roles, setRoles] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   const fetchUsers = async () => {
     try {
@@ -66,8 +68,14 @@ export default function UserManagement() {
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
+      if (user?.id === userId && newRole !== "super_owner") {
+        toast.error("لا يمكن إزالة رتبة مدير عام من حسابك الحالي");
+        return;
+      }
+
       // Delete existing role
-      await supabase.from("user_roles").delete().eq("user_id", userId);
+      const { error: deleteError } = await supabase.from("user_roles").delete().eq("user_id", userId);
+      if (deleteError) throw deleteError;
 
       // Insert new role
       const { error } = await supabase.from("user_roles").insert({

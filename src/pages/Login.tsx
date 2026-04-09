@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, ArrowLeft, ShieldCheck, Lock, Globe } from "lucide-react";
@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { oauth } from "@/integrations/supabase-oauth";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import splitLogo from "@/assets/split-logo-icon.png";
 
@@ -16,18 +15,13 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { signIn, user, roles, hasRole } = useAuth();
+  const { signIn, user, loading: authLoading, getDefaultRoute } = useAuth();
 
-  const getRedirectPath = () => {
-    if (hasRole("super_owner")) return "/admin";
-    if (hasRole("it_support")) return "/it-dashboard";
-    return "/dashboard";
-  };
-
-  if (user && roles.length > 0) {
-    navigate(getRedirectPath());
-    return null;
-  }
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate(getDefaultRoute(), { replace: true });
+    }
+  }, [authLoading, user, navigate, getDefaultRoute]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,16 +35,7 @@ export default function Login() {
     if (error) {
       toast.error("خطأ في تسجيل الدخول، يرجى التحقق من البيانات");
     } else {
-      setTimeout(async () => {
-        const { data: rolesData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", (await supabase.auth.getUser()).data.user?.id || "");
-        const userRoles = rolesData?.map((r: any) => r.role) || [];
-        if (userRoles.includes("super_owner")) navigate("/admin");
-        else if (userRoles.includes("it_support")) navigate("/it-dashboard");
-        else navigate("/dashboard");
-      }, 300);
+      toast.success("تم تسجيل الدخول بنجاح");
     }
   };
 
