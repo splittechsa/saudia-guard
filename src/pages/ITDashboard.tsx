@@ -116,11 +116,16 @@ export default function ITDashboard() {
       supabase.from("profiles").select("id, full_name, email"),
     ]);
 
-    const firstError = storesRes.error || logsRes.error || ticketsRes.error || debugRes.error || profilesRes.error;
-    if (firstError) {
-      toast.error(`فشل تحميل بيانات لوحة IT: ${firstError.message}`);
-      setLoading(false);
-      return;
+    const errorMessages = [
+      storesRes.error?.message,
+      logsRes.error?.message,
+      ticketsRes.error?.message,
+      debugRes.error?.message,
+      profilesRes.error?.message,
+    ].filter((msg): msg is string => Boolean(msg));
+
+    if (errorMessages.length > 0) {
+      toast.error(`تحميل جزئي لبيانات لوحة IT: ${errorMessages[0]}`);
     }
 
     const stores = storesRes.data || [];

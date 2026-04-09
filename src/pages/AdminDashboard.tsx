@@ -116,11 +116,18 @@ export default function AdminDashboard() {
       supabase.from("store_api_keys").select("store_id, api_key, is_active"),
     ]);
 
-    const firstError = storesRes.error || alertsRes.error || ticketsRes.error || subsRes.error || pendingSubsRes.error || auditsRes.error || apiKeysRes.error;
-    if (firstError) {
-      toast.error(`فشل تحميل لوحة الإدارة: ${firstError.message}`);
-      setLoading(false);
-      return;
+    const errorMessages = [
+      storesRes.error?.message,
+      alertsRes.error?.message,
+      ticketsRes.error?.message,
+      subsRes.error?.message,
+      pendingSubsRes.error?.message,
+      auditsRes.error?.message,
+      apiKeysRes.error?.message,
+    ].filter((msg): msg is string => Boolean(msg));
+
+    if (errorMessages.length > 0) {
+      toast.error(`تحميل جزئي للوحة الإدارة: ${errorMessages[0]}`);
     }
 
     if (storesRes.data) setStores(storesRes.data as any[]);

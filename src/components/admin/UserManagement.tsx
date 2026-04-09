@@ -13,7 +13,6 @@ interface UserRow {
   id: string;
   email: string;
   full_name: string | null;
-  created_at: string;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -41,8 +40,8 @@ export default function UserManagement() {
     try {
       const { data: usersData, error: usersError } = await supabase
         .from("profiles")
-        .select("id, email, full_name, created_at")
-        .order("created_at", { ascending: false });
+        .select("id, email, full_name")
+        .order("id", { ascending: false });
 
       if (usersError) throw usersError;
 
